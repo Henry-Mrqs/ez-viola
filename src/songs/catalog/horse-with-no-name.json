@@ -1,0 +1,178 @@
+{
+  "id": "song-horse-with-no-name",
+  "title": "A Horse with No Name",
+  "artist": "America",
+  "genre": "Folk",
+  "difficulty": "beginner",
+  "difficultyRating": 1,
+  "bpm": 120,
+  "timeSignature": {
+    "numerator": 4,
+    "denominator": 4
+  },
+  "durationSec": 24.0,
+  "capo": 0,
+  "tuning": ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "chordsUsed": {
+    "Em": {
+      "chordId": "Em",
+      "displayName": "Em",
+      "baseFret": 1,
+      "frets": [0, 2, 2, 0, 0, 0],
+      "fingers": [0, 2, 3, 0, 0, 0],
+      "notes": ["E2", "B2", "E3", "G3", "B3", "E4"]
+    },
+    "D6add9_Fsharp": {
+      "chordId": "D6add9_Fsharp",
+      "displayName": "D6add9/F#",
+      "baseFret": 1,
+      "frets": [2, 0, 0, 2, 0, 0],
+      "fingers": [2, 0, 0, 3, 0, 0],
+      "notes": ["F#2", "A2", "D3", "A3", "B3", "E4"]
+    }
+  },
+  "timeline": [
+    {
+      "id": "hwnn-01",
+      "timeSec": 0.0,
+      "beat": 0.0,
+      "measure": 1,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "On the first"
+    },
+    {
+      "id": "hwnn-02",
+      "timeSec": 1.0,
+      "beat": 2.0,
+      "measure": 1,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "part of the"
+    },
+    {
+      "id": "hwnn-03",
+      "timeSec": 2.0,
+      "beat": 4.0,
+      "measure": 2,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down",
+      "lyrics": "journey"
+    },
+    {
+      "id": "hwnn-04",
+      "timeSec": 3.0,
+      "beat": 6.0,
+      "measure": 2,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down"
+    },
+    {
+      "id": "hwnn-05",
+      "timeSec": 4.0,
+      "beat": 8.0,
+      "measure": 3,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "I was looking"
+    },
+    {
+      "id": "hwnn-06",
+      "timeSec": 5.0,
+      "beat": 10.0,
+      "measure": 3,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "at all the"
+    },
+    {
+      "id": "hwnn-07",
+      "timeSec": 6.0,
+      "beat": 12.0,
+      "measure": 4,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down",
+      "lyrics": "life"
+    },
+    {
+      "id": "hwnn-08",
+      "timeSec": 7.0,
+      "beat": 14.0,
+      "measure": 4,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down"
+    },
+    {
+      "id": "hwnn-09",
+      "timeSec": 8.0,
+      "beat": 16.0,
+      "measure": 5,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "There were plants"
+    },
+    {
+      "id": "hwnn-10",
+      "timeSec": 9.0,
+      "beat": 18.0,
+      "measure": 5,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "and birds"
+    },
+    {
+      "id": "hwnn-11",
+      "timeSec": 10.0,
+      "beat": 20.0,
+      "measure": 6,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down",
+      "lyrics": "and rocks"
+    },
+    {
+      "id": "hwnn-12",
+      "timeSec": 11.0,
+      "beat": 22.0,
+      "measure": 6,
+      "durationBeats": 2.0,
+      "durationSec": 1.0,
+      "type": "chord",
+      "chordId": "D6add9_Fsharp",
+      "strumDirection": "down",
+      "lyrics": "and things"
+    }
+  ]
+}

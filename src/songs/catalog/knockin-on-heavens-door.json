@@ -1,0 +1,194 @@
+{
+  "id": "song-knockin-on-heavens-door",
+  "title": "Knockin' on Heaven's Door",
+  "artist": "Bob Dylan",
+  "genre": "Rock",
+  "difficulty": "beginner",
+  "difficultyRating": 2,
+  "bpm": 68,
+  "timeSignature": {
+    "numerator": 4,
+    "denominator": 4
+  },
+  "durationSec": 28.235,
+  "capo": 0,
+  "tuning": ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "chordsUsed": {
+    "G": {
+      "chordId": "G",
+      "displayName": "G",
+      "baseFret": 1,
+      "frets": [3, 2, 0, 0, 0, 3],
+      "fingers": [2, 1, 0, 0, 0, 3],
+      "notes": ["G2", "B2", "D3", "G3", "B3", "G4"]
+    },
+    "D": {
+      "chordId": "D",
+      "displayName": "D",
+      "baseFret": 1,
+      "frets": [-1, -1, 0, 2, 3, 2],
+      "fingers": [0, 0, 0, 1, 3, 2],
+      "notes": ["D3", "A3", "D4", "F#4"]
+    },
+    "Am7": {
+      "chordId": "Am7",
+      "displayName": "Am7",
+      "baseFret": 1,
+      "frets": [-1, 0, 2, 0, 1, 0],
+      "fingers": [0, 0, 2, 0, 1, 0],
+      "notes": ["A2", "E3", "G3", "C4", "E4"]
+    },
+    "C": {
+      "chordId": "C",
+      "displayName": "C",
+      "baseFret": 1,
+      "frets": [-1, 3, 2, 0, 1, 0],
+      "fingers": [0, 3, 2, 0, 1, 0],
+      "notes": ["C3", "E3", "G3", "C4", "E4"]
+    }
+  },
+  "timeline": [
+    {
+      "id": "kd-01",
+      "timeSec": 0.0,
+      "beat": 0.0,
+      "measure": 1,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "G",
+      "strumDirection": "down",
+      "lyrics": "Mama take this"
+    },
+    {
+      "id": "kd-02",
+      "timeSec": 1.765,
+      "beat": 2.0,
+      "measure": 1,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "D",
+      "strumDirection": "down",
+      "lyrics": "badge off of me"
+    },
+    {
+      "id": "kd-03",
+      "timeSec": 3.529,
+      "beat": 4.0,
+      "measure": 2,
+      "durationBeats": 4.0,
+      "durationSec": 3.529,
+      "type": "chord",
+      "chordId": "Am7",
+      "strumDirection": "down"
+    },
+    {
+      "id": "kd-04",
+      "timeSec": 7.059,
+      "beat": 8.0,
+      "measure": 3,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "G",
+      "strumDirection": "down",
+      "lyrics": "I can't use it"
+    },
+    {
+      "id": "kd-05",
+      "timeSec": 8.824,
+      "beat": 10.0,
+      "measure": 3,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "D",
+      "strumDirection": "down",
+      "lyrics": "anymore"
+    },
+    {
+      "id": "kd-06",
+      "timeSec": 10.588,
+      "beat": 12.0,
+      "measure": 4,
+      "durationBeats": 4.0,
+      "durationSec": 3.529,
+      "type": "chord",
+      "chordId": "C",
+      "strumDirection": "down"
+    },
+    {
+      "id": "kd-07",
+      "timeSec": 14.118,
+      "beat": 16.0,
+      "measure": 5,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "G",
+      "strumDirection": "down",
+      "lyrics": "Knock knock"
+    },
+    {
+      "id": "kd-08",
+      "timeSec": 15.882,
+      "beat": 18.0,
+      "measure": 5,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "D",
+      "strumDirection": "down",
+      "lyrics": "knockin' on"
+    },
+    {
+      "id": "kd-09",
+      "timeSec": 17.647,
+      "beat": 20.0,
+      "measure": 6,
+      "durationBeats": 4.0,
+      "durationSec": 3.529,
+      "type": "chord",
+      "chordId": "Am7",
+      "strumDirection": "down",
+      "lyrics": "heaven's door"
+    },
+    {
+      "id": "kd-10",
+      "timeSec": 21.176,
+      "beat": 24.0,
+      "measure": 7,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "G",
+      "strumDirection": "down",
+      "lyrics": "Knock knock"
+    },
+    {
+      "id": "kd-11",
+      "timeSec": 22.941,
+      "beat": 26.0,
+      "measure": 7,
+      "durationBeats": 2.0,
+      "durationSec": 1.765,
+      "type": "chord",
+      "chordId": "D",
+      "strumDirection": "down",
+      "lyrics": "knockin' on"
+    },
+    {
+      "id": "kd-12",
+      "timeSec": 24.706,
+      "beat": 28.0,
+      "measure": 8,
+      "durationBeats": 4.0,
+      "durationSec": 3.529,
+      "type": "chord",
+      "chordId": "C",
+      "strumDirection": "down",
+      "lyrics": "heaven's door"
+    }
+  ]
+}

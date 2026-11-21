@@ -1,0 +1,163 @@
+{
+  "id": "song-tempo-perdido",
+  "title": "Tempo Perdido",
+  "artist": "Legião Urbana",
+  "genre": "Rock",
+  "difficulty": "elementary",
+  "difficultyRating": 2,
+  "bpm": 85,
+  "timeSignature": {
+    "numerator": 4,
+    "denominator": 4
+  },
+  "durationSec": 22.588,
+  "capo": 0,
+  "tuning": ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "chordsUsed": {
+    "C": {
+      "chordId": "C",
+      "displayName": "C (Dó maior)",
+      "baseFret": 1,
+      "frets": [-1, 3, 2, 0, 1, 0],
+      "fingers": [0, 3, 2, 0, 1, 0],
+      "notes": ["C3", "E3", "G3", "C4", "E4"]
+    },
+    "Am7": {
+      "chordId": "Am7",
+      "displayName": "Am7 (Lá menor com 7ª)",
+      "baseFret": 1,
+      "frets": [-1, 0, 2, 0, 1, 0],
+      "fingers": [0, 0, 2, 0, 1, 0],
+      "notes": ["A2", "E3", "G3", "C4", "E4"]
+    },
+    "Bm7_easy": {
+      "chordId": "Bm7_easy",
+      "displayName": "Bm7 (Si menor com 7ª)",
+      "baseFret": 1,
+      "frets": [-1, 2, 0, 2, 0, 2],
+      "fingers": [0, 1, 0, 2, 0, 3],
+      "notes": ["B2", "D3", "A3", "B3", "F#4"]
+    },
+    "Bm": {
+      "chordId": "Bm",
+      "displayName": "Bm (Si menor com Pestana)",
+      "baseFret": 2,
+      "frets": [-1, 2, 4, 4, 3, 2],
+      "fingers": [0, 1, 3, 4, 2, 1],
+      "barres": [
+        {
+          "fret": 2,
+          "fromString": 5,
+          "toString": 1,
+          "finger": 1
+        }
+      ],
+      "notes": ["B2", "F#3", "B3", "D4", "F#4"]
+    },
+    "Em": {
+      "chordId": "Em",
+      "displayName": "Em (Mi menor)",
+      "baseFret": 1,
+      "frets": [0, 2, 2, 0, 0, 0],
+      "fingers": [0, 2, 3, 0, 0, 0],
+      "notes": ["E2", "B2", "E3", "G3", "B3", "E4"]
+    }
+  },
+  "timeline": [
+    {
+      "id": "tp-01",
+      "timeSec": 0.0,
+      "beat": 0.0,
+      "measure": 1,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "C",
+      "strumDirection": "down",
+      "lyrics": "Todos os dias"
+    },
+    {
+      "id": "tp-02",
+      "timeSec": 2.824,
+      "beat": 4.0,
+      "measure": 2,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Am7",
+      "strumDirection": "down",
+      "lyrics": "quando acordo"
+    },
+    {
+      "id": "tp-03",
+      "timeSec": 5.647,
+      "beat": 8.0,
+      "measure": 3,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Bm7_easy",
+      "strumDirection": "down",
+      "lyrics": "Não tenho mais"
+    },
+    {
+      "id": "tp-04",
+      "timeSec": 8.471,
+      "beat": 12.0,
+      "measure": 4,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down",
+      "lyrics": "o tempo que passou"
+    },
+    {
+      "id": "tp-05",
+      "timeSec": 11.294,
+      "beat": 16.0,
+      "measure": 5,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "C",
+      "strumDirection": "down",
+      "lyrics": "Mas tenho muito tempo"
+    },
+    {
+      "id": "tp-06",
+      "timeSec": 14.118,
+      "beat": 20.0,
+      "measure": 6,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Am7",
+      "strumDirection": "down",
+      "lyrics": "Temos todo o tempo"
+    },
+    {
+      "id": "tp-07",
+      "timeSec": 16.941,
+      "beat": 24.0,
+      "measure": 7,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Bm7_easy",
+      "strumDirection": "down",
+      "lyrics": "do mundo"
+    },
+    {
+      "id": "tp-08",
+      "timeSec": 19.765,
+      "beat": 28.0,
+      "measure": 8,
+      "durationBeats": 4.0,
+      "durationSec": 2.824,
+      "type": "chord",
+      "chordId": "Em",
+      "strumDirection": "down"
+    }
+  ]
+}
