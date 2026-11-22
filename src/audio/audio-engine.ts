@@ -13,6 +13,7 @@ export class AudioEngine {
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private highPassFilter: BiquadFilterNode | null = null;
+  private adaptiveFilter: BiquadFilterNode | null = null;
   private tunerAnalyser: AnalyserNode | null = null;
   private chordAnalyser: AnalyserNode | null = null;
   private loopbackGain: GainNode | null = null;
@@ -33,6 +34,7 @@ export class AudioEngine {
   public onTunerUpdate?: (result: TunerResult) => void;
   public onChordUpdate?: (result: ChordResult) => void;
   public onStatusChange?: (status: AudioEngineStatus) => void;
+  public onFrame?: (deltaMs: number) => void;
 
   constructor() {
     this.timeBuffer = new Float32Array(new ArrayBuffer(2048 * 4));
@@ -40,6 +42,14 @@ export class AudioEngine {
 
     this.tunerEngine = new TunerEngine(44100, 2048, 0.15);
     this.chordRecognizer = new ChordRecognizer(44100, 4096, 0.58, 4);
+
+    this.tunerEngine.onTargetStringChange = (stringNumber: number | null) => {
+      if (stringNumber !== null) {
+        this.setAdaptiveFilterForString(stringNumber);
+      } else {
+        this.setAdaptiveFilterForChords();
+      }
+    };
   }
 
   public getStatus(): AudioEngineStatus {
@@ -69,6 +79,41 @@ export class AudioEngine {
       const gainVal = enabled ? this.loopbackVolume : 0;
       this.loopbackGain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime);
     }
+  }
+
+  public setAdaptiveFilterCutoff(
+    cutoffHz: number,
+    type: BiquadFilterType = "lowpass"
+  ): void {
+    if (!this.adaptiveFilter || !this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    this.adaptiveFilter.type = type;
+    if (this.adaptiveFilter.frequency.setTargetAtTime) {
+      this.adaptiveFilter.frequency.setTargetAtTime(cutoffHz, now, 0.04);
+    } else {
+      this.adaptiveFilter.frequency.setValueAtTime(cutoffHz, now);
+    }
+  }
+
+  public setAdaptiveFilterForString(stringNumber: number): void {
+    const CUTOFF_MAP: Record<number, number> = {
+      6: 115,
+      5: 150,
+      4: 220,
+      3: 300,
+      2: 380,
+      1: 500,
+    };
+    const targetFc = CUTOFF_MAP[stringNumber] ?? 3200;
+    this.setAdaptiveFilterCutoff(targetFc, "lowpass");
+  }
+
+  public setAdaptiveFilterForChords(): void {
+    this.setAdaptiveFilterCutoff(3200, "lowpass");
+  }
+
+  public getAdaptiveFilter(): BiquadFilterNode | null {
+    return this.adaptiveFilter;
   }
 
   public isLoopbackEnabled(): boolean {
@@ -178,6 +223,12 @@ export class AudioEngine {
       hpf.Q.setValueAtTime(0.707, ctx.currentTime);
       this.highPassFilter = hpf;
 
+      const adaptive = ctx.createBiquadFilter();
+      adaptive.type = "lowpass";
+      adaptive.frequency.setValueAtTime(3200, ctx.currentTime);
+      adaptive.Q.setValueAtTime(0.707, ctx.currentTime);
+      this.adaptiveFilter = adaptive;
+
       const tunerAna = ctx.createAnalyser();
       tunerAna.fftSize = 2048;
       tunerAna.smoothingTimeConstant = 0.0;
@@ -189,8 +240,9 @@ export class AudioEngine {
       this.chordAnalyser = chordAna;
 
       this.sourceNode.connect(hpf);
-      hpf.connect(tunerAna);
-      hpf.connect(chordAna);
+      hpf.connect(adaptive);
+      adaptive.connect(tunerAna);
+      adaptive.connect(chordAna);
 
       this.setStatus("running");
       this.lastFrameTimestamp = performance.now();
@@ -237,6 +289,11 @@ export class AudioEngine {
       }
     }
 
+    // 3. Process Custom Frame Observers (e.g. HandsFreeCalibrationEngine)
+    if (this.onFrame) {
+      this.onFrame(deltaMs);
+    }
+
     this.rafId = requestAnimationFrame(this.startLoop);
   };
 
@@ -276,6 +333,13 @@ export class AudioEngine {
         this.highPassFilter.disconnect();
       } catch {}
       this.highPassFilter = null;
+    }
+
+    if (this.adaptiveFilter) {
+      try {
+        this.adaptiveFilter.disconnect();
+      } catch {}
+      this.adaptiveFilter = null;
     }
 
     if (this.tunerAnalyser) {

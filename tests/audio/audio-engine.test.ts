@@ -24,7 +24,10 @@ describe("AudioEngine (Web Audio Graph & Lifecycle Orchestration)", () => {
 
     const mockBiquad = {
       type: "highpass",
-      frequency: { setValueAtTime: vi.fn() },
+      frequency: {
+        setValueAtTime: vi.fn(),
+        setTargetAtTime: vi.fn(),
+      },
       Q: { setValueAtTime: vi.fn() },
       connect: vi.fn(),
       disconnect: vi.fn(),
@@ -128,5 +131,24 @@ describe("AudioEngine (Web Audio Graph & Lifecycle Orchestration)", () => {
     expect(testBuf[0]).toBeCloseTo(0.05, 2);
 
     await engine.stop();
+  });
+
+  it("configures adaptive filter for strings and chords", async () => {
+    const engine = new AudioEngine();
+    await engine.start();
+
+    const adaptive = engine.getAdaptiveFilter();
+    expect(adaptive).toBeDefined();
+
+    // Set filter for low E2 (String 6) -> 115 Hz
+    engine.setAdaptiveFilterForString(6);
+    expect(adaptive?.frequency.setTargetAtTime).toHaveBeenCalledWith(115, 0, 0.04);
+
+    // Set filter for chords -> 3200 Hz
+    engine.setAdaptiveFilterForChords();
+    expect(adaptive?.frequency.setTargetAtTime).toHaveBeenCalledWith(3200, 0, 0.04);
+
+    await engine.stop();
+    expect(engine.getAdaptiveFilter()).toBeNull();
   });
 });

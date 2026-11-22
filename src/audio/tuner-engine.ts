@@ -1,7 +1,6 @@
 import {
   TunerResult,
   GUITAR_STRINGS,
-  NOTE_NAMES,
   GuitarStringSpec,
 } from "./types";
 import { YinDetector } from "./yin-detector";
@@ -10,10 +9,12 @@ import {
   GuitarCalibrationProfile,
   GuitarCalibrationService,
 } from "./guitar-calibration";
+import { PitchStabilizer } from "./pitch-stabilizer";
 
 export class TunerEngine {
   private yinDetector: YinDetector;
   private noiseGate: NoiseGate;
+  private pitchStabilizer: PitchStabilizer;
   private sampleRate: number;
   private baseAlpha: number;
   private adaptiveSmoothing: boolean;
@@ -25,6 +26,12 @@ export class TunerEngine {
   private attackElapsedMs: number = 0;
   private calibrationProfile: GuitarCalibrationProfile | null = null;
 
+  // Attack blanking state
+  private wasGateOpen: boolean = false;
+  private lastRms: number = 0;
+  private attackBlankingRemainingMs: number = 0;
+  private lastStableCents: number | null = null;
+
   // Zero-GC pre-allocated 5-sample median filter buffers
   private medianBuffer: Float32Array;
   private medianSorted: Float32Array;
@@ -33,6 +40,9 @@ export class TunerEngine {
 
   // Pre-allocated result struct for Zero-GC
   private result: TunerResult;
+
+  // Callback when target string changes
+  public onTargetStringChange?: (stringNumber: number | null) => void;
 
   constructor(
     sampleRate: number = 44100,
@@ -48,6 +58,15 @@ export class TunerEngine {
     this.yinDetector = new YinDetector(sampleRate, bufferSize, 0.15);
     this.noiseGate = new NoiseGate(noiseGateConfig);
 
+    const isTestSingleFrame = ewmaAlpha === 1.0;
+    this.pitchStabilizer = new PitchStabilizer({
+      minAlpha: isTestSingleFrame ? 1.0 : (this.adaptiveSmoothing ? 0.12 : ewmaAlpha),
+      maxAlpha: isTestSingleFrame ? 1.0 : 0.8,
+      confirmationFrames: isTestSingleFrame ? 1 : 4,
+      hysteresisCents: 65.0,
+      decayFreezeMs: isTestSingleFrame ? 0 : 400,
+    });
+
     this.medianBuffer = new Float32Array(5);
     this.medianSorted = new Float32Array(5);
 
@@ -59,15 +78,25 @@ export class TunerEngine {
       octave: 0,
       midiNote: 0,
       cents: 0,
+      rawCents: 0,
       inTune: false,
       clarity: 0,
       rms: 0,
       isGateOpen: false,
       stringIndex: -1,
+      tuningAction: "IDLE",
+      action: "IDLE",
+      instruction: "Toque uma corda para afinar...",
+      isDangerBreak: false,
+      isAttackBlanking: false,
     };
 
     // Load custom guitar calibration from localStorage if available
     this.loadCalibrationFromStorage();
+  }
+
+  public getPitchStabilizer(): PitchStabilizer {
+    return this.pitchStabilizer;
   }
 
   public setCalibrationProfile(profile: GuitarCalibrationProfile | null): void {
@@ -85,6 +114,14 @@ export class TunerEngine {
         this.calibrationProfile = stored;
       }
     } catch {}
+  }
+
+  public getSmoothedFrequency(): number {
+    return this.smoothedFreq;
+  }
+
+  public getLastMidiNote(): number {
+    return this.lastMidiNote;
   }
 
   public setSampleRate(sampleRate: number): void {
@@ -113,20 +150,24 @@ export class TunerEngine {
   }
 
   public resetFilter(): void {
+    this.pitchStabilizer.reset();
     this.resetMedian();
     this.smoothedFreq = -1;
     this.attackElapsedMs = 0;
+    this.attackBlankingRemainingMs = 0;
+    this.lastStableCents = null;
+    this.wasGateOpen = false;
   }
 
   private pushMedian(val: number): number {
     if (this.medianCount > 0) {
       const currentMedian = this.medianSorted[Math.floor(this.medianCount / 2)];
-      const centsDiff = Math.abs(1200 * (Math.log(val / currentMedian) / Math.LN2));
-      // If note changed by > 80 cents (string switch or distinct fret), reset median filter
-      // to guarantee zero latency on string change as required.
-      if (centsDiff > 80) {
-        this.medianCount = 0;
-        this.medianIndex = 0;
+      if (currentMedian > 0) {
+        const centsDiff = Math.abs(1200 * (Math.log(val / currentMedian) / Math.LN2));
+        if (centsDiff > 80) {
+          this.medianCount = 0;
+          this.medianIndex = 0;
+        }
       }
     }
 
@@ -244,6 +285,7 @@ export class TunerEngine {
         this.lastActiveString = this.targetStringLock;
       }
     }
+    this.onTargetStringChange?.(stringNumber);
   }
 
   public getNoiseGate(): NoiseGate {
@@ -261,15 +303,43 @@ export class TunerEngine {
     this.result.isGateOpen = isGateOpen;
     this.result.rms = rms;
 
+    // Detect attack transient onset via gate open or sudden RMS jump
+    const deltaRms = rms - this.lastRms;
+    if ((!this.wasGateOpen && isGateOpen) || deltaRms > 0.015) {
+      this.attackBlankingRemainingMs = 60.0;
+    }
+
+    let isAttackBlanking = false;
+    if (this.attackBlankingRemainingMs > 0) {
+      isAttackBlanking = true;
+      this.attackBlankingRemainingMs = Math.max(0, this.attackBlankingRemainingMs - deltaMs);
+    }
+
+    this.wasGateOpen = isGateOpen;
+    this.lastRms = rms;
+
     if (!isGateOpen) {
       this.result.frequency = -1;
       this.result.smoothedFrequency = -1;
+      this.result.targetFrequency = this.targetStringLock?.targetFrequency ?? 0;
+      this.result.noteName = "-";
+      this.result.octave = 0;
+      this.result.midiNote = 0;
       this.result.cents = 0;
+      this.result.rawCents = 0;
       this.result.inTune = false;
       this.result.clarity = 0;
+      this.result.stringIndex = -1;
+      this.result.tuningAction = "IDLE";
+      this.result.action = "IDLE";
+      this.result.instruction = "Toque uma corda para afinar...";
+      this.result.isDangerBreak = false;
+      this.result.isAttackBlanking = false;
       this.smoothedFreq = -1;
       this.resetMedian();
       this.attackElapsedMs = 0;
+      this.lastStableCents = null;
+      this.pitchStabilizer.reset();
       return this.result;
     }
 
@@ -278,12 +348,25 @@ export class TunerEngine {
     if (pitchResult.frequency <= 0 || pitchResult.clarity < 0.6) {
       this.result.frequency = -1;
       this.result.smoothedFrequency = -1;
+      this.result.targetFrequency = this.targetStringLock?.targetFrequency ?? 0;
+      this.result.noteName = "-";
+      this.result.octave = 0;
+      this.result.midiNote = 0;
       this.result.cents = 0;
+      this.result.rawCents = 0;
       this.result.inTune = false;
       this.result.clarity = pitchResult.clarity;
+      this.result.stringIndex = -1;
+      this.result.tuningAction = "IDLE";
+      this.result.action = "IDLE";
+      this.result.instruction = "Toque uma corda para afinar...";
+      this.result.isDangerBreak = false;
+      this.result.isAttackBlanking = false;
       this.smoothedFreq = -1;
       this.resetMedian();
       this.attackElapsedMs = 0;
+      this.lastStableCents = null;
+      this.pitchStabilizer.reset();
       return this.result;
     }
 
@@ -293,83 +376,69 @@ export class TunerEngine {
     // 1. Guitar Harmonic Folding
     const foldedFreq = this.foldGuitarHarmonics(rawFreq);
 
-    // 2. 5-Sample Median Filter (eliminates transient spikes and pick scrapes)
+    // 2. 5-Sample Median Filter
     let filteredFreq = foldedFreq;
     if (this.adaptiveSmoothing && this.baseAlpha !== 1.0) {
       filteredFreq = this.pushMedian(foldedFreq);
     }
 
-    // Convert frequency to MIDI note: MIDI = 69 + 12 * log2(f / 440)
-    const midiReal = 69 + 12 * (Math.log(filteredFreq / 440) / Math.LN2);
-    let midiNearest = Math.round(midiReal);
-
-    // If target string is locked, target frequency is fixed to that string
-    let targetFreq: number;
-    let noteName: string;
-    let octave: number;
-
-    if (this.targetStringLock) {
-      targetFreq = this.targetStringLock.targetFrequency;
-      noteName = this.targetStringLock.noteName;
-      octave = this.targetStringLock.octave;
-      midiNearest = this.targetStringLock.midiNote;
-    } else {
-      targetFreq = 440 * Math.pow(2, (midiNearest - 69) / 12);
-      const semitoneIndex = ((midiNearest % 12) + 12) % 12;
-      noteName = NOTE_NAMES[semitoneIndex];
-      octave = Math.floor(midiNearest / 12) - 1;
-    }
+    // 3. Pitch Stabilizer Processing
+    const stabilizerOutput = this.pitchStabilizer.process(
+      filteredFreq,
+      pitchResult.clarity,
+      isGateOpen,
+      this.targetStringLock,
+      deltaMs
+    );
 
     // Match string index (0 = Corda 6 E2, 5 = Corda 1 E4)
     let stringIndex = -1;
-    for (let i = 0; i < GUITAR_STRINGS.length; i++) {
-      const s = GUITAR_STRINGS[i];
-      if (s.midiNote === midiNearest) {
-        stringIndex = i;
-        this.lastActiveString = s;
-        break;
+    if (this.targetStringLock) {
+      stringIndex = GUITAR_STRINGS.findIndex(
+        (s) => s.stringNumber === this.targetStringLock?.stringNumber
+      );
+    } else {
+      for (let i = 0; i < GUITAR_STRINGS.length; i++) {
+        const s = GUITAR_STRINGS[i];
+        if (s.midiNote === stabilizerOutput.midiNote) {
+          stringIndex = i;
+          this.lastActiveString = s;
+          break;
+        }
       }
     }
 
-    // 3. Adaptive EWMA Smoothing with Attack Damping
-    let alpha: number;
-    if (!this.adaptiveSmoothing || this.baseAlpha === 1.0) {
-      alpha = this.baseAlpha;
-    } else if (this.smoothedFreq <= 0 || this.lastMidiNote !== midiNearest) {
-      // Note change: 0.80 for zero-latency string transition
-      alpha = 0.80;
-    } else if (this.attackElapsedMs < 80) {
-      // Attack transient damping: 0.15 dampens sharp initial tension surge
-      alpha = Math.min(0.15, this.baseAlpha);
+    // Handle Attack Blanking cents freeze if applicable
+    let finalCents = stabilizerOutput.cents;
+    if (isAttackBlanking && this.adaptiveSmoothing && this.baseAlpha !== 1.0) {
+      if (this.lastStableCents !== null) {
+        finalCents = this.lastStableCents;
+      } else {
+        this.lastStableCents = stabilizerOutput.cents;
+      }
     } else {
-      // Stable around target note: 0.15 for rock-solid PolyTune/Boss stability
-      alpha = this.baseAlpha;
+      this.lastStableCents = stabilizerOutput.cents;
     }
 
-    if (this.smoothedFreq <= 0 || alpha === 1.0) {
-      this.smoothedFreq = filteredFreq;
-    } else {
-      this.smoothedFreq =
-        alpha * filteredFreq + (1 - alpha) * this.smoothedFreq;
-    }
-    this.lastMidiNote = midiNearest;
-
-    // Calculate cents deviation: 1200 * log2(f / f_target)
-    const centsDeviation =
-      1200 * (Math.log(this.smoothedFreq / targetFreq) / Math.LN2);
-    // Clamp to -50 to +50 for gauge range
-    const clampedCents = Math.max(-50, Math.min(50, centsDeviation));
+    this.smoothedFreq = stabilizerOutput.smoothedFrequency;
+    this.lastMidiNote = stabilizerOutput.midiNote;
 
     this.result.frequency = rawFreq;
-    this.result.smoothedFrequency = this.smoothedFreq;
-    this.result.targetFrequency = targetFreq;
-    this.result.noteName = noteName;
-    this.result.octave = octave;
-    this.result.midiNote = midiNearest;
-    this.result.cents = clampedCents;
-    this.result.inTune = Math.abs(centsDeviation) <= 5.0;
+    this.result.smoothedFrequency = stabilizerOutput.smoothedFrequency;
+    this.result.targetFrequency = stabilizerOutput.targetFrequency;
+    this.result.noteName = stabilizerOutput.noteName;
+    this.result.octave = stabilizerOutput.octave;
+    this.result.midiNote = stabilizerOutput.midiNote;
+    this.result.cents = finalCents;
+    this.result.rawCents = stabilizerOutput.rawCents;
+    this.result.inTune = Math.abs(finalCents) <= 5.0;
     this.result.clarity = pitchResult.clarity;
     this.result.stringIndex = stringIndex;
+    this.result.tuningAction = stabilizerOutput.tuningAction;
+    this.result.action = stabilizerOutput.action;
+    this.result.instruction = stabilizerOutput.instruction;
+    this.result.isDangerBreak = stabilizerOutput.isDangerBreak;
+    this.result.isAttackBlanking = isAttackBlanking;
 
     return this.result;
   }

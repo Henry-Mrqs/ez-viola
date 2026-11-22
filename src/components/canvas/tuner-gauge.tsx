@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { GUITAR_STRINGS } from "@/audio/types";
+import { GUITAR_STRINGS, TunerTuningAction } from "@/audio/types";
 import { clsx } from "clsx";
 
 export interface TunerGaugeProps {
@@ -14,6 +14,9 @@ export interface TunerGaugeProps {
   octave?: number;
   frequency?: number;
   targetFrequency?: number;
+  tuningAction?: TunerTuningAction;
+  instruction?: string;
+  isDangerBreak?: boolean;
 }
 
 export function TunerGauge({
@@ -26,6 +29,9 @@ export function TunerGauge({
   octave,
   frequency,
   targetFrequency,
+  tuningAction,
+  instruction,
+  isDangerBreak,
 }: TunerGaugeProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const currentCentsRef = useRef<number>(0);
@@ -263,6 +269,33 @@ export function TunerGauge({
         style={{ width: "360px", height: "180px" }}
         className="w-full max-w-[360px] h-[180px] drop-shadow-md"
       />
+
+      {/* Explicit Portuguese Beginner Guidance Banner */}
+      {isSoundActive && (
+        <div className="w-full max-w-sm mt-1 px-3">
+          {isDangerBreak || tuningAction === "DANGER_BREAK" ? (
+            <div className="flex items-center justify-center gap-2 p-3 bg-red-600/30 border-2 border-red-500 rounded-xl text-red-200 font-extrabold text-sm text-center animate-pulse shadow-lg shadow-red-950/50">
+              <span className="text-xl">⚠️</span>
+              <span>CUIDADO: RISCO DE QUEBRA! AFROUXE IMEDIATAMENTE</span>
+            </div>
+          ) : inTune || tuningAction === "IN_TUNE" ? (
+            <div className="flex items-center justify-center gap-2 p-2.5 bg-emerald-500/20 border border-emerald-500/60 rounded-xl text-emerald-300 font-bold text-sm text-center shadow-md shadow-emerald-950/40">
+              <span className="text-lg">✓</span>
+              <span>AFINADO!</span>
+            </div>
+          ) : tuningAction === "TIGHTEN" || cents < -5 ? (
+            <div className="flex items-center justify-center gap-2 p-2.5 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 font-bold text-sm text-center">
+              <span className="text-lg">↺</span>
+              <span>{instruction || "Corda frouxa — APERTE a tarraxa"}</span>
+            </div>
+          ) : tuningAction === "LOOSEN" || cents > 5 ? (
+            <div className="flex items-center justify-center gap-2 p-2.5 bg-orange-500/20 border border-orange-500/50 rounded-xl text-orange-300 font-bold text-sm text-center">
+              <span className="text-lg">↻</span>
+              <span>{instruction || "Corda esticada — AFROUXE a tarraxa"}</span>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

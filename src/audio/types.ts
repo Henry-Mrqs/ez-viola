@@ -101,6 +101,13 @@ export const NOTE_NAMES = [
   "B",
 ] as const;
 
+export type TunerTuningAction =
+  | "TIGHTEN" // Corda frouxa -> APERTE a tarraxa
+  | "LOOSEN" // Corda esticada -> AFROUXE a tarraxa
+  | "IN_TUNE" // Afinado dentro da margem
+  | "DANGER_BREAK" // Alerta extremo na 1ª corda (E4 > +45 cents)
+  | "IDLE"; // Sem sinal ou ruído
+
 export interface TunerResult {
   frequency: number; // -1 if silence or unpitched
   smoothedFrequency: number;
@@ -109,11 +116,28 @@ export interface TunerResult {
   octave: number;
   midiNote: number;
   cents: number; // -50 to +50
+  rawCents: number; // Desvio centesimal antes de clamp
   inTune: boolean; // Math.abs(cents) <= 5.0
   clarity: number; // 0.0 to 1.0
   rms: number;
   isGateOpen: boolean;
   stringIndex: number; // 0..5 index into GUITAR_STRINGS, or -1 if outside
+  tuningAction: TunerTuningAction; // Ação mecânica recomendada
+  action: TunerTuningAction; // Alias compatível
+  instruction: string; // Instrução textual para iniciante
+  isDangerBreak: boolean; // True se risco iminente de rompimento
+  isAttackBlanking: boolean; // True se dentro da janela de supressão transitória
+}
+
+export interface PitchStabilizerConfig {
+  minAlpha?: number; // Padrão: 0.12 (firmeza máxima perto do tom)
+  maxAlpha?: number; // Padrão: 0.80 (resposta instantânea em transições)
+  inflectionCents?: number; // Padrão: 12.0 cents (ponto de inflexão sigmoidal)
+  sigmoidSlope?: number; // Padrão: 4.0
+  deadbandCents?: number; // Padrão: 0.25 cents (zona morta de micro-ruído)
+  hysteresisCents?: number; // Padrão: 65.0 cents (Schmitt Trigger de nota)
+  confirmationFrames?: number; // Padrão: 4 frames consecutivos
+  decayFreezeMs?: number; // Padrão: 400 ms (congelamento gracioso no silêncio)
 }
 
 export interface ChordResult {

@@ -12,11 +12,17 @@ const INITIAL_TUNER_RESULT: TunerResult = {
   octave: 0,
   midiNote: 0,
   cents: 0,
+  rawCents: 0,
   inTune: false,
   clarity: 0,
   rms: 0,
   isGateOpen: false,
   stringIndex: -1,
+  tuningAction: "IDLE",
+  action: "IDLE",
+  instruction: "Toque uma corda para afinar...",
+  isDangerBreak: false,
+  isAttackBlanking: false,
 };
 
 export function useTuner(engine: AudioEngine) {

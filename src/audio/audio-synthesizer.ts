@@ -63,6 +63,49 @@ export class AudioSynthesizer {
   }
 
   /**
+   * Plays progressive calibration feedback chimes:
+   * Step 1: 880 Hz (A5), 30ms
+   * Step 2: 1174.66 Hz (D6), 30ms
+   * Step 3: 1760 Hz (A6) crystalline confirmation ting (350ms decay)
+   */
+  public static playCalibrationStepChime(
+    audioCtx: AudioContext,
+    step: 1 | 2 | 3,
+    time: number
+  ): void {
+    if (!audioCtx || audioCtx.state === "closed") return;
+    try {
+      if (step === 1) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, time);
+        gain.gain.setValueAtTime(0.2, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.03);
+      } else if (step === 2) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1174.66, time);
+        gain.gain.setValueAtTime(0.22, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.03);
+      } else {
+        this.playConfirmationTing(audioCtx, time);
+      }
+    } catch (e) {
+      console.warn("Could not schedule calibration chime:", e);
+    }
+  }
+
+  /**
    * Subtle damped thud for Miss feedback.
    */
   public static playDampedMissSound(audioCtx: AudioContext, time: number): void {

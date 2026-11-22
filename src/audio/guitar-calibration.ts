@@ -1,26 +1,36 @@
 import { GUITAR_STRINGS, NOTE_NAMES } from "./types";
 import { YinDetector } from "./yin-detector";
 
+export interface StringHarmonic {
+  frequency: number; // Frequência refinada (Hz)
+  amplitudeDb: number; // Amplitude em dBFS
+}
+
 export interface StringCalibrationData {
   stringNumber: number; // 6 a 1
   name: string; // E2, A2, D3, G3, B3, E4
   targetFrequency: number;
   measuredFrequency: number;
   centsOffset: number;
-  harmonics: { frequency: number; amplitudeDb: number }[];
+  varianceCents?: number; // Dispersão entre toques (cents)
+  harmonics: StringHarmonic[];
   clarity: number;
+  samplesCount?: number; // 1 a 3
+  capturedAt?: number;
 }
 
 export interface ChordCalibrationData {
   chordId: string;
   displayName: string;
   chromagram: number[]; // 12 classes C..B normalizadas
+  varianceScore?: number;
   capturedAt: number;
 }
 
 export interface GuitarCalibrationProfile {
-  version: number;
+  version: 1 | 2;
   updatedAt: number;
+  instrumentType?: "acoustic_steel" | "classical_nylon" | "electric" | "unknown";
   strings: Record<number, StringCalibrationData>;
   chords: Record<string, ChordCalibrationData>;
 }
@@ -30,17 +40,14 @@ export const CALIBRATION_STORAGE_KEY = "ez_viola_guitar_calibration";
 export class GuitarCalibrationService {
   /**
    * Captures string frequency, cents offset, clarity, and harmonic profile from audio buffers.
-   *
-   * @param timeBuffer Raw time-domain samples (e.g. 2048 samples)
-   * @param freqBuffer Frequency-domain spectrum in dBFS (AnalyserNode.getFloatFrequencyData)
-   * @param sampleRate Hardware audio sample rate (e.g. 44100 or 48000)
-   * @param stringNumber Guitar string number (6 for low E2, down to 1 for high E4)
    */
   public static captureString(
     timeBuffer: Float32Array,
     freqBuffer: Float32Array,
     sampleRate: number,
-    stringNumber: number
+    stringNumber: number,
+    varianceCents: number = 0,
+    samplesCount: number = 1
   ): StringCalibrationData {
     const stringSpec = GUITAR_STRINGS.find((s) => s.stringNumber === stringNumber) ?? {
       stringNumber,
@@ -71,7 +78,7 @@ export class GuitarCalibrationService {
     const fftSize = binCount * 2;
     const binWidth = sampleRate / fftSize;
 
-    const harmonics: { frequency: number; amplitudeDb: number }[] = [];
+    const harmonics: StringHarmonic[] = [];
 
     // Extract first 6 harmonics (h = 1 fundamental, h = 2..6 overtones)
     for (let h = 1; h <= 6; h++) {
@@ -120,20 +127,23 @@ export class GuitarCalibrationService {
       targetFrequency: stringSpec.targetFrequency,
       measuredFrequency: Math.round(measuredFreq * 100) / 100,
       centsOffset,
+      varianceCents,
       harmonics,
       clarity: Math.round(clarity * 100) / 100,
+      samplesCount,
+      capturedAt: Date.now(),
     };
   }
 
   /**
    * Captures real-world acoustic chord chromagram vector (12-PCP) from frequency spectrum.
-   * Uses linear magnitude with dynamic floor and soft compression (mag^0.7).
    */
   public static captureChord(
     freqBuffer: Float32Array,
     sampleRate: number,
     chordId: string,
-    displayName: string
+    displayName: string,
+    varianceScore: number = 0.95
   ): ChordCalibrationData {
     const binCount = freqBuffer.length;
     const fftSize = binCount * 2;
@@ -182,12 +192,13 @@ export class GuitarCalibrationService {
       chordId,
       displayName,
       chromagram: normalizedChroma,
+      varianceScore,
       capturedAt: Date.now(),
     };
   }
 
   /**
-   * Loads calibration profile from localStorage. Returns null if not present or invalid.
+   * Loads calibration profile from localStorage with seamless v1 -> v2 migration.
    */
   public static loadProfile(): GuitarCalibrationProfile | null {
     if (typeof window === "undefined" || !window.localStorage) {
@@ -201,6 +212,23 @@ export class GuitarCalibrationService {
       const parsed = JSON.parse(raw) as GuitarCalibrationProfile;
       if (!parsed || typeof parsed !== "object" || !parsed.strings || !parsed.chords) {
         return null;
+      }
+
+      // Transparent Migration from v1 to v2
+      if (parsed.version === 1) {
+        parsed.version = 2;
+        parsed.instrumentType = parsed.instrumentType ?? "unknown";
+        for (const key of Object.keys(parsed.strings)) {
+          const numKey = Number(key);
+          const str = parsed.strings[numKey];
+          if (str) {
+            str.varianceCents = str.varianceCents ?? 0;
+            str.samplesCount = str.samplesCount ?? 1;
+            str.capturedAt = str.capturedAt ?? parsed.updatedAt;
+          }
+        }
+        // Save back migrated profile
+        this.saveProfile(parsed);
       }
 
       return parsed;
@@ -218,8 +246,9 @@ export class GuitarCalibrationService {
     if (stored) return stored;
 
     return {
-      version: 1,
+      version: 2,
       updatedAt: Date.now(),
+      instrumentType: "unknown",
       strings: {},
       chords: {},
     };
@@ -293,6 +322,7 @@ export class GuitarCalibrationService {
       "==================================================================",
       `Data da Calibração: ${dateStr}`,
       `Versão do Perfil: ${profile.version}`,
+      `Tipo de Instrumento: ${profile.instrumentType ?? "unknown"}`,
       "",
       "--- 1. RESPOSTA ESPECTRAL POR CORDA (6 a 1) ---",
     ];
@@ -309,11 +339,9 @@ export class GuitarCalibrationService {
 
       calibratedStringCount++;
       const sign = data.centsOffset >= 0 ? "+" : "";
+      lines.push(`Corda ${strNum} (${data.name}):`);
       lines.push(
-        `Corda ${strNum} (${data.name}):`
-      );
-      lines.push(
-        `  Alvo: ${data.targetFrequency.toFixed(2)} Hz | Medido: ${data.measuredFrequency.toFixed(2)} Hz (Desvio: ${sign}${data.centsOffset.toFixed(1)} cents) | Clareza: ${(data.clarity * 100).toFixed(0)}%`
+        `  Alvo: ${data.targetFrequency.toFixed(2)} Hz | Medido: ${data.measuredFrequency.toFixed(2)} Hz (Desvio: ${sign}${data.centsOffset.toFixed(1)} cents) | Clareza: ${(data.clarity * 100).toFixed(0)}% | Variância: ${(data.varianceCents ?? 0).toFixed(1)} cents`
       );
 
       if (data.harmonics && data.harmonics.length > 0) {

@@ -12,8 +12,9 @@ import { ConveyorCanvas } from "@/components/canvas/conveyor-canvas";
 import { GameHud } from "@/components/feedback/game-hud";
 import { SpeedControls } from "@/components/feedback/speed-controls";
 import { ResultsModal } from "@/components/feedback/results-modal";
-import { GuitarChordDiagram } from "@/components/chord-diagram/chord-diagram";
+import { AnimatedFretboardGuide } from "@/components/guitar/animated-fretboard-guide";
 import { Button } from "@/components/ui/button";
+import { clsx } from "clsx";
 import {
   Play,
   ArrowLeft,
@@ -38,6 +39,9 @@ export default function PracticeSongPage() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [showPortraitNotice, setShowPortraitNotice] = useState(false);
+  const [selectedReviewChord, setSelectedReviewChord] = useState<string>(
+    Object.keys(song.chordsUsed)[0] || "Em"
+  );
 
   // Release wake lock on unmount
   useEffect(() => {
@@ -155,22 +159,34 @@ export default function PracticeSongPage() {
             <p className="text-sm text-slate-400 font-medium">{song.artist}</p>
           </div>
 
-          {/* Review Chords Used in this song */}
+          {/* Review Chords Used in this song with Anatomical Guide */}
           {Object.keys(song.chordsUsed).length > 0 && (
             <div className="w-full max-w-2xl p-6 rounded-3xl bg-slate-800/40 border border-slate-700/60">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-                Acordes desta Lição (revise a digitação):
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                Guia Anatômico de Dedos (clique no acorde para visualizar):
               </h2>
-              <div className="flex flex-wrap items-center justify-center gap-6">
-                {Object.values(song.chordsUsed).map((chordDef) => (
-                  <div
-                    key={chordDef.chordId}
-                    className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-sm"
+
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+                {Object.keys(song.chordsUsed).map((chordKey) => (
+                  <button
+                    key={chordKey}
+                    onClick={() => setSelectedReviewChord(chordKey)}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-xl font-bold text-xs transition-all",
+                      selectedReviewChord === chordKey
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-950"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    )}
                   >
-                    <GuitarChordDiagram chord={chordDef} width={120} height={150} />
-                  </div>
+                    {chordKey}
+                  </button>
                 ))}
               </div>
+
+              <AnimatedFretboardGuide
+                chordId={selectedReviewChord}
+                className="w-full shadow-none bg-slate-900/60"
+              />
             </div>
           )}
 
@@ -200,7 +216,7 @@ export default function PracticeSongPage() {
           />
 
           {/* Conveyor Belt 2D Canvas */}
-          <div className="rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
+          <div className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
             <ConveyorCanvas
               song={song}
               getCurrentTime={clock.getCurrentTime}
@@ -211,6 +227,23 @@ export default function PracticeSongPage() {
               lastHitFeedback={game.lastFeedback}
               feedbackTimestamp={game.feedbackTimestamp}
             />
+
+            {/* Wait Mode Anatomical Fretboard Guide Overlay */}
+            {game.isWaiting && game.activeWaitEvent?.chordId && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
+                <div className="w-full max-w-md">
+                  <div className="text-center mb-2">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30">
+                      Modo Espera • Toque o Acorde para Continuar
+                    </span>
+                  </div>
+                  <AnimatedFretboardGuide
+                    chordId={game.activeWaitEvent.chordId}
+                    className="w-full shadow-2xl border-slate-700 bg-slate-900"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom Speed Controls & Toggles */}

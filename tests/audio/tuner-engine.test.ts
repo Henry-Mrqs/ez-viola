@@ -181,4 +181,28 @@ describe("TunerEngine (EWMA Smoothing, Cents, and String Identification)", () =>
     // With alpha=0.80, jumps immediately from 82.41 to > 100 Hz in one frame
     expect(resA2.smoothedFrequency).toBeGreaterThan(100.0);
   });
+
+  it("suppresses transient pick impact pitch-glide (+35 cents) via 60ms Attack Blanking", () => {
+    const tuner = new TunerEngine(sampleRate, 2048, 0.15);
+
+    // Initial steady A4 (440 Hz)
+    const bufA4 = generateSineWave(440.0, sampleRate, 0.1, 0.8);
+    for (let i = 0; i < 5; i++) {
+      tuner.process(bufA4, 16.6);
+    }
+    const stableRes = tuner.process(bufA4, 16.6);
+    expect(Math.abs(stableRes.cents)).toBeLessThan(1.0);
+
+    // Sudden attack spike onset (+35 cents = ~448.97 Hz) with high amplitude
+    // Initial 40ms (< 60ms attack blanking window)
+    const bufSpike = generateSineWave(448.97, sampleRate, 0.1, 1.0);
+    const spikeRes1 = tuner.process(bufSpike, 20.0);
+    expect(spikeRes1.isAttackBlanking).toBe(true);
+    // Cents should remain frozen / suppressed, NOT reporting the +35 cents overshoot
+    expect(spikeRes1.cents).toBeLessThan(10.0);
+
+    const spikeRes2 = tuner.process(bufSpike, 20.0);
+    expect(spikeRes2.isAttackBlanking).toBe(true);
+    expect(spikeRes2.cents).toBeLessThan(10.0);
+  });
 });

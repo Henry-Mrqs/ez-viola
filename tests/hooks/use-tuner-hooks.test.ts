@@ -14,9 +14,11 @@ describe("useTuner Hook", () => {
 
     engine.getTunerEngine().setGuitarMode(false);
     expect(engine.getTunerEngine().isGuitarMode()).toBe(false);
+    expect(setGuitarModeSpy).toHaveBeenCalledWith(false);
 
     engine.getTunerEngine().setGuitarMode(true);
     expect(engine.getTunerEngine().isGuitarMode()).toBe(true);
+    expect(setGuitarModeSpy).toHaveBeenCalledWith(true);
   });
 
   it("handles loopback volume and state in AudioEngine", () => {

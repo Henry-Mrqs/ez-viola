@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   GuitarCalibrationService,
   GuitarCalibrationProfile,
-  CALIBRATION_STORAGE_KEY,
 } from "@/audio/guitar-calibration";
 import { TunerEngine } from "@/audio/tuner-engine";
 import { ChordRecognizer } from "@/audio/chord-recognizer";

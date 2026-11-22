@@ -9,6 +9,7 @@ import { StringSelector } from "@/components/tuner/string-selector";
 import { NoiseGateModal } from "@/components/tuner/noise-gate-modal";
 import { MicMonitor } from "@/components/tuner/mic-monitor";
 import { GuitarCalibrationWizard } from "@/components/calibration/guitar-calibration-wizard";
+import { GuitarHeadstockViewer } from "@/components/tuner/guitar-headstock-viewer";
 import { Button } from "@/components/ui/button";
 import {
   Mic,
@@ -228,7 +229,35 @@ export default function TunerPage() {
 
         {isRunning && (
           <div className="w-full flex flex-col items-center space-y-4 animate-in fade-in duration-300">
-            {/* Visual Arc Needle Gauge with String Lock Badge */}
+            {/* Visual Headstock with Animated Peg Directions & Anti-Panic Guard */}
+            {guitarMode && (
+              <div className="w-full flex justify-center mb-1">
+                <GuitarHeadstockViewer
+                  activeStringNumber={
+                    targetString !== null
+                      ? targetString
+                      : tunerResult.stringIndex >= 0
+                      ? 6 - tunerResult.stringIndex
+                      : null
+                  }
+                  cents={tunerResult.cents}
+                  inTune={tunerResult.inTune}
+                  hasSignal={tunerResult.frequency > 0 && tunerResult.isGateOpen}
+                  tuningAction={tunerResult.tuningAction}
+                  onSelectString={(strNum) => {
+                    const newTarget = targetString === strNum ? null : strNum;
+                    setTargetString(newTarget);
+                    if (newTarget !== null) {
+                      engine.setAdaptiveFilterForString(newTarget);
+                    } else {
+                      engine.setAdaptiveFilterForChords();
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Visual Arc Needle Gauge with Explicit Portuguese Guidance */}
             <TunerGauge
               cents={tunerResult.cents}
               inTune={tunerResult.inTune}
@@ -239,6 +268,9 @@ export default function TunerPage() {
               octave={tunerResult.octave}
               frequency={tunerResult.smoothedFrequency}
               targetFrequency={tunerResult.targetFrequency}
+              tuningAction={tunerResult.tuningAction}
+              instruction={tunerResult.instruction}
+              isDangerBreak={tunerResult.isDangerBreak}
             />
 
             {/* Note & Numerical Values */}
