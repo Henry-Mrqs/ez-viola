@@ -92,14 +92,14 @@ export default function HomePage() {
             <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
               <Volume2 className="w-6 h-6 text-sky-400" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Calibração de Ruído</h2>
+            <h2 className="text-xl font-bold text-white mb-2">Calibração do Seu Violão</h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Wizard em 3 passos para medir o silêncio da sua sala e calibrar o Schmitt Trigger com
-              histerese de 6 dB para eliminar ruído ambiente indesejado.
+              Toque corda por corda e acorde por acorde para o app aprender a resposta acústica do seu violão
+              e do seu microfone, calibrando as frequências exatas e gerando relatório técnico.
             </p>
           </div>
           <div className="mt-6 flex items-center text-xs font-semibold text-emerald-400 group-hover:translate-x-1 transition-transform">
-            Calibrar Microfone →
+            Iniciar Calibração Guiada →
           </div>
         </Link>
       </div>

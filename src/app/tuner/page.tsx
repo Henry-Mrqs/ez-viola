@@ -8,6 +8,7 @@ import { FrequencyDisplay } from "@/components/tuner/frequency-display";
 import { StringSelector } from "@/components/tuner/string-selector";
 import { NoiseGateModal } from "@/components/tuner/noise-gate-modal";
 import { MicMonitor } from "@/components/tuner/mic-monitor";
+import { GuitarCalibrationWizard } from "@/components/calibration/guitar-calibration-wizard";
 import { Button } from "@/components/ui/button";
 import {
   Mic,
@@ -45,6 +46,7 @@ export default function TunerPage() {
   } = useTuner(engine);
 
   const [calibrateModalOpen, setCalibrateModalOpen] = useState(false);
+  const [guitarCalibrateOpen, setGuitarCalibrateOpen] = useState(false);
   const [showMonitor, setShowMonitor] = useState(false);
 
   return (
@@ -91,6 +93,24 @@ export default function TunerPage() {
             ) : (
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!isRunning) {
+                try {
+                  await start();
+                } catch {}
+              }
+              setGuitarCalibrateOpen(true);
+            }}
+            className="text-xs gap-1.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 px-2 sm:px-3"
+            title="Calibrar cordas e acordes com o seu violão"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>Calibrar Violão</span>
           </Button>
 
           <Button
@@ -239,6 +259,12 @@ export default function TunerPage() {
       <NoiseGateModal
         isOpen={calibrateModalOpen}
         onClose={() => setCalibrateModalOpen(false)}
+        engine={engine}
+      />
+
+      <GuitarCalibrationWizard
+        isOpen={guitarCalibrateOpen}
+        onClose={() => setGuitarCalibrateOpen(false)}
         engine={engine}
       />
     </div>

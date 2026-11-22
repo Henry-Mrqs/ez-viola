@@ -39,7 +39,7 @@ export class AudioEngine {
     this.freqBuffer = new Float32Array(new ArrayBuffer(2048 * 4)); // 4096 fftSize / 2
 
     this.tunerEngine = new TunerEngine(44100, 2048, 0.15);
-    this.chordRecognizer = new ChordRecognizer(44100, 4096, 0.72, 8);
+    this.chordRecognizer = new ChordRecognizer(44100, 4096, 0.58, 4);
   }
 
   public getStatus(): AudioEngineStatus {
@@ -87,6 +87,28 @@ export class AudioEngine {
     } else {
       outputArray.fill(0);
     }
+  }
+
+  public getFrequencyData(outputArray: Float32Array): void {
+    if (this.chordAnalyser) {
+      this.chordAnalyser.getFloatFrequencyData(
+        outputArray as unknown as Float32Array<ArrayBuffer>
+      );
+    } else {
+      outputArray.fill(-100);
+    }
+  }
+
+  public getTimeBuffer(): Float32Array {
+    return this.timeBuffer;
+  }
+
+  public getFreqBuffer(): Float32Array {
+    return this.freqBuffer;
+  }
+
+  public getSampleRate(): number {
+    return this.audioCtx?.sampleRate ?? 44100;
   }
 
   private setStatus(newStatus: AudioEngineStatus): void {
@@ -192,23 +214,27 @@ export class AudioEngine {
     this.lastFrameTimestamp = now;
 
     // 1. Process Monophonic Tuner Engine
-    if (this.tunerAnalyser && this.onTunerUpdate) {
+    if (this.tunerAnalyser) {
       this.tunerAnalyser.getFloatTimeDomainData(this.timeBuffer);
-      const tunerResult = this.tunerEngine.process(this.timeBuffer, deltaMs);
-      this.onTunerUpdate(tunerResult);
+      if (this.onTunerUpdate) {
+        const tunerResult = this.tunerEngine.process(this.timeBuffer, deltaMs);
+        this.onTunerUpdate(tunerResult);
+      }
     }
 
     // 2. Process Polyphonic Chord Recognizer
-    if (this.chordAnalyser && this.onChordUpdate) {
+    if (this.chordAnalyser) {
       this.chordAnalyser.getFloatFrequencyData(this.freqBuffer);
-      const isGateOpen = this.tunerEngine.getNoiseGate().getIsOpen();
-      const rms = this.tunerEngine.getNoiseGate().getLastRms();
-      const chordResult = this.chordRecognizer.processSpectrum(
-        this.freqBuffer,
-        isGateOpen,
-        rms
-      );
-      this.onChordUpdate(chordResult);
+      if (this.onChordUpdate) {
+        const isGateOpen = this.tunerEngine.getNoiseGate().getIsOpen();
+        const rms = this.tunerEngine.getNoiseGate().getLastRms();
+        const chordResult = this.chordRecognizer.processSpectrum(
+          this.freqBuffer,
+          isGateOpen,
+          rms
+        );
+        this.onChordUpdate(chordResult);
+      }
     }
 
     this.rafId = requestAnimationFrame(this.startLoop);

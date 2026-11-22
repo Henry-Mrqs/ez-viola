@@ -14,7 +14,7 @@ export function Navigation() {
     { href: "/", label: "Início", icon: Compass },
     { href: "/tuner", label: "Afinador", icon: Sliders },
     { href: "/practice", label: "Praticar", icon: Music },
-    { href: "/calibrate", label: "Calibrar Mic", icon: Volume2 },
+    { href: "/calibrate", label: "Calibrar Violão", icon: Volume2 },
   ];
 
   return (

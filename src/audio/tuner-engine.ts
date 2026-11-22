@@ -6,6 +6,10 @@ import {
 } from "./types";
 import { YinDetector } from "./yin-detector";
 import { NoiseGate } from "./noise-gate";
+import {
+  GuitarCalibrationProfile,
+  GuitarCalibrationService,
+} from "./guitar-calibration";
 
 export class TunerEngine {
   private yinDetector: YinDetector;
@@ -19,6 +23,7 @@ export class TunerEngine {
   private targetStringLock: GuitarStringSpec | null = null;
   private lastActiveString: GuitarStringSpec | null = null;
   private attackElapsedMs: number = 0;
+  private calibrationProfile: GuitarCalibrationProfile | null = null;
 
   // Zero-GC pre-allocated 5-sample median filter buffers
   private medianBuffer: Float32Array;
@@ -60,6 +65,26 @@ export class TunerEngine {
       isGateOpen: false,
       stringIndex: -1,
     };
+
+    // Load custom guitar calibration from localStorage if available
+    this.loadCalibrationFromStorage();
+  }
+
+  public setCalibrationProfile(profile: GuitarCalibrationProfile | null): void {
+    this.calibrationProfile = profile;
+  }
+
+  public getCalibrationProfile(): GuitarCalibrationProfile | null {
+    return this.calibrationProfile;
+  }
+
+  public loadCalibrationFromStorage(): void {
+    try {
+      const stored = GuitarCalibrationService.loadProfile();
+      if (stored) {
+        this.calibrationProfile = stored;
+      }
+    } catch {}
   }
 
   public setSampleRate(sampleRate: number): void {
@@ -144,6 +169,40 @@ export class TunerEngine {
 
     const centsDiff = (f1: number, f2: number): number =>
       Math.abs(1200 * (Math.log(f1 / f2) / Math.LN2));
+
+    // 0. Custom Acoustic Calibration Profile intelligence
+    if (this.calibrationProfile?.strings) {
+      // If locked target string has calibrated harmonics, match against user's actual mic response
+      if (this.targetStringLock) {
+        const calLocked = this.calibrationProfile.strings[this.targetStringLock.stringNumber];
+        if (calLocked && calLocked.harmonics && calLocked.measuredFrequency > 0) {
+          for (const h of calLocked.harmonics) {
+            if (h.frequency > calLocked.measuredFrequency * 1.5) {
+              if (centsDiff(freq, h.frequency) <= 55) {
+                const mult = Math.round(h.frequency / calLocked.measuredFrequency);
+                if (mult >= 2 && mult <= 4) {
+                  return freq / mult;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Check calibrated overtones of low strings (6, 5, 4) prone to 2x/3x bleed on mobile/laptop mics
+      for (const strNum of [6, 5, 4]) {
+        const cal = this.calibrationProfile.strings[strNum];
+        if (cal && cal.harmonics && cal.measuredFrequency > 0) {
+          for (let i = 1; i < cal.harmonics.length; i++) {
+            const h = cal.harmonics[i];
+            const mult = Math.round(h.frequency / cal.measuredFrequency);
+            if (mult >= 2 && mult <= 3 && centsDiff(freq, h.frequency) <= 55) {
+              return freq / mult;
+            }
+          }
+        }
+      }
+    }
 
     // 1. Explicitly locked target string
     if (this.targetStringLock) {
