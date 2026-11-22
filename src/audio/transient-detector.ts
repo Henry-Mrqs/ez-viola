@@ -203,7 +203,8 @@ export class TransientDetector {
       return this.result;
     }
 
-    // Criterion 3: String pitch window (+/- 250 cents)
+    // Criterion 3: String pitch window (+/- 350 cents or harmonic multiples)
+    // Acoustic guitar strings frequently radiate strong 2nd (2.0x) or 3rd (3.0x) harmonics on attack.
     if (
       targetFreq !== undefined &&
       targetFreq > 0 &&
@@ -213,7 +214,14 @@ export class TransientDetector {
       const centsDiff = Math.abs(
         1200 * (Math.log(detectedFreq / targetFreq) / Math.LN2)
       );
-      if (centsDiff > 250) {
+
+      const octaveRatio = detectedFreq / targetFreq;
+      const isHarmonic =
+        Math.abs(octaveRatio - 2.0) < 0.15 ||
+        Math.abs(octaveRatio - 3.0) < 0.2 ||
+        Math.abs(octaveRatio - 0.5) < 0.08;
+
+      if (centsDiff > 350 && !isHarmonic) {
         this.result.isOnset = false;
         this.result.isRejected = true;
         this.result.rejectionReason = "WRONG_STRING_WINDOW";

@@ -13,6 +13,8 @@ import { GameHud } from "@/components/feedback/game-hud";
 import { SpeedControls } from "@/components/feedback/speed-controls";
 import { ResultsModal } from "@/components/feedback/results-modal";
 import { AnimatedFretboardGuide } from "@/components/guitar/animated-fretboard-guide";
+import { LiveTelemetryPanel } from "@/components/tuner/live-telemetry-panel";
+import { TunerResult } from "@/audio/types";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import {
@@ -21,6 +23,7 @@ import {
   Sliders,
   Smartphone,
   Music,
+  Activity,
 } from "lucide-react";
 
 export default function PracticeSongPage() {
@@ -39,6 +42,8 @@ export default function PracticeSongPage() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [showPortraitNotice, setShowPortraitNotice] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState(false);
+  const [tunerResult, setTunerResult] = useState<TunerResult | undefined>(undefined);
   const [selectedReviewChord, setSelectedReviewChord] = useState<string>(
     Object.keys(song.chordsUsed)[0] || "Em"
   );
@@ -67,6 +72,7 @@ export default function PracticeSongPage() {
   // Connect DSP updates from AudioEngine to Game Engine
   useEffect(() => {
     engine.onTunerUpdate = (tunerRes) => {
+      setTunerResult(tunerRes);
       game.onTunerUpdate(tunerRes);
     };
 
@@ -259,6 +265,83 @@ export default function PracticeSongPage() {
             enableWaitMode={game.enableWaitMode}
             onToggleWaitMode={() => game.setEnableWaitMode(!game.enableWaitMode)}
           />
+
+          {/* Permanent Live Chord Guidance During Practice (Current + Next) */}
+          {(() => {
+            const currentSongTime = clock.getCurrentTime();
+            const upcomingEvents = song.timeline.filter((ev) => ev.timeSec >= currentSongTime - 0.4);
+            const currentActiveEvent = upcomingEvents[0];
+            const nextUpcomingEvent = upcomingEvents.find(
+              (ev, idx) => idx > 0 && ev.chordId && ev.chordId !== currentActiveEvent?.chordId
+            );
+
+            const activeChordId = currentActiveEvent?.chordId || Object.keys(song.chordsUsed)[0] || "Em";
+            const nextChordId = nextUpcomingEvent?.chordId;
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl">
+                {/* Current Chord Fretboard Guide */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Acorde Atual (Posicione os Dedos):
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-300">
+                      {song.chordsUsed[activeChordId]?.displayName || activeChordId}
+                    </span>
+                  </div>
+                  <AnimatedFretboardGuide
+                    chordId={activeChordId}
+                    className="w-full shadow-none bg-slate-950/70 border-slate-800"
+                  />
+                </div>
+
+                {/* Next Chord Preview + Telemetry button */}
+                <div className="flex flex-col justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                      A Seguir (Prepare a Mão):
+                    </span>
+                    {nextChordId ? (
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                        <span className="text-xl font-black text-sky-400 font-mono block">
+                          {song.chordsUsed[nextChordId]?.displayName || nextChordId}
+                        </span>
+                        <span className="text-[11px] text-slate-400 mt-1 block">
+                          Próxima troca em breve
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800/50 text-slate-500 text-xs italic">
+                        Finalizando a música...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowTelemetry(!showTelemetry)}
+                      className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{showTelemetry ? "Ocultar Telemetria" : "📊 Telemetria do Mic"}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Collapsible Live Telemetry Panel */}
+          {showTelemetry && (
+            <LiveTelemetryPanel
+              engine={engine}
+              tunerResult={tunerResult}
+              className="mt-2"
+            />
+          )}
         </div>
       )}
 

@@ -331,20 +331,62 @@ export function AnimatedFretboardGuide({
             fillOpacity="0.4"
           />
 
-          {/* Fret Vertical Metal Wires */}
+          {/* Fret Vertical Metal Wires & Nut */}
           {Array.from({ length: fretsCount + 1 }).map((_, i) => {
             const fx = nutX + i * fretSpacing;
             const isNut = i === 0;
 
+            if (isNut) {
+              return (
+                <g key="nut-pestana">
+                  {/* Bone/Ivory Pestana (Nut) */}
+                  <rect
+                    x={nutX - 5}
+                    y="16"
+                    width="10"
+                    height="188"
+                    rx="3"
+                    fill="#F8FAFC"
+                    stroke="#94A3B8"
+                    strokeWidth="1.5"
+                  />
+                  <text
+                    x={nutX}
+                    y="11"
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="black"
+                    fill="#F8FAFC"
+                    className="font-sans select-none tracking-widest uppercase"
+                  >
+                    Pestana
+                  </text>
+                </g>
+              );
+            }
+
             return (
               <g key={`fret-${i}`}>
+                {/* Solid Silver Metallic Fret Bar */}
+                <rect
+                  x={fx - 2}
+                  y="18"
+                  width="4"
+                  height="184"
+                  rx="1"
+                  fill="#E2E8F0"
+                  stroke="#475569"
+                  strokeWidth="0.75"
+                />
+                {/* Specular White Highlight Line */}
                 <line
                   x1={fx}
-                  y1="20"
+                  y1="19"
                   x2={fx}
-                  y2="200"
-                  stroke={isNut ? "#F8FAFC" : "url(#metalFret)"}
-                  strokeWidth={isNut ? 6 : 3}
+                  y2="201"
+                  stroke="#FFFFFF"
+                  strokeWidth="1.5"
+                  opacity="0.9"
                 />
                 {/* Fret Number Label underneath */}
                 {i > 0 && i <= fretsCount && (

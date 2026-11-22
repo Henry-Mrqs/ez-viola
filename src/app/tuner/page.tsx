@@ -8,6 +8,7 @@ import { FrequencyDisplay } from "@/components/tuner/frequency-display";
 import { StringSelector } from "@/components/tuner/string-selector";
 import { NoiseGateModal } from "@/components/tuner/noise-gate-modal";
 import { MicMonitor } from "@/components/tuner/mic-monitor";
+import { LiveTelemetryPanel } from "@/components/tuner/live-telemetry-panel";
 import { GuitarCalibrationWizard } from "@/components/calibration/guitar-calibration-wizard";
 import { GuitarHeadstockViewer } from "@/components/tuner/guitar-headstock-viewer";
 import { Button } from "@/components/ui/button";
@@ -148,9 +149,9 @@ export default function TunerPage() {
         </div>
       </div>
 
-      {/* Expandable Mic Monitor & Test Panel */}
+      {/* Expandable Mic Monitor & Telemetry Panel */}
       {showMonitor && (
-        <div className="w-full my-4 animate-in fade-in slide-in-from-top-3 duration-300">
+        <div className="w-full my-4 space-y-3 animate-in fade-in slide-in-from-top-3 duration-300">
           <MicMonitor
             engine={engine}
             isRunning={isRunning}
@@ -159,6 +160,10 @@ export default function TunerPage() {
             onToggleLoopback={toggleLoopback}
             onVolumeChange={setLoopbackVolume}
             onStartMic={start}
+          />
+          <LiveTelemetryPanel
+            engine={engine}
+            tunerResult={tunerResult}
           />
         </div>
       )}

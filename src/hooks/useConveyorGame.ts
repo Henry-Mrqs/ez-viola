@@ -5,6 +5,7 @@ import { SongSchema, TimelineEvent } from "@/songs/song-schema";
 import { TunerResult, ChordResult } from "@/audio/types";
 import { AudioClockControls } from "./useAudioClock";
 import { AudioSynthesizer } from "@/audio/audio-synthesizer";
+import { isSingleNoteMatch } from "@/audio/pitch-helper";
 
 export interface GameScoreState {
   score: number;
@@ -67,12 +68,17 @@ export function useConveyorGame(
     isFinished: false,
   });
 
-  const [enableWaitMode, setEnableWaitMode] = useState<boolean>(true);
+  const [enableWaitMode, setEnableWaitModeState] = useState<boolean>(true);
   const [isWaiting, setIsWaiting] = useState<boolean>(false);
   const [activeWaitEvent, setActiveWaitEvent] = useState<TimelineEvent | null>(null);
 
   const [lastFeedback, setLastFeedback] = useState<"perfect" | "good" | "miss" | null>(null);
   const [feedbackTimestamp, setFeedbackTimestamp] = useState<number>(0);
+
+  // Synchronous refs for 60 FPS animation loop
+  const isWaitingRef = useRef<boolean>(false);
+  const activeWaitEventRef = useRef<TimelineEvent | null>(null);
+  const enableWaitModeRef = useRef<boolean>(true);
 
   // Tracking processed events
   const processedEventIdsRef = useRef<Set<string>>(new Set());
@@ -82,6 +88,11 @@ export function useConveyorGame(
   // Latest DSP results refs for zero-latency checks
   const latestTunerRef = useRef<TunerResult | null>(null);
   const latestChordRef = useRef<ChordResult | null>(null);
+
+  const setEnableWaitMode = useCallback((val: boolean) => {
+    enableWaitModeRef.current = val;
+    setEnableWaitModeState(val);
+  }, []);
 
   const onTunerUpdate = useCallback((res: TunerResult) => {
     latestTunerRef.current = res;
@@ -94,6 +105,8 @@ export function useConveyorGame(
   const resetGame = useCallback(() => {
     processedEventIdsRef.current.clear();
     isFinishedRef.current = false;
+    isWaitingRef.current = false;
+    activeWaitEventRef.current = null;
     setIsWaiting(false);
     setActiveWaitEvent(null);
     setLastFeedback(null);
@@ -116,7 +129,7 @@ export function useConveyorGame(
     clock.stop();
   }, [song, clock]);
 
-  // Main evaluation ticker on requestAnimationFrame or interval
+  // Main evaluation ticker running continuously on requestAnimationFrame
   useEffect(() => {
     if (!clock.isPlaying) return;
 
@@ -180,7 +193,7 @@ export function useConveyorGame(
         const timeDelta = currentSongTime - ev.timeSec;
 
         // 1. If currently in Wait Mode for this event:
-        if (isWaiting && activeWaitEvent?.id === ev.id) {
+        if (isWaitingRef.current && activeWaitEventRef.current?.id === ev.id) {
           // Continuously listen to microphone for target chord/note
           let matched = false;
 
@@ -190,20 +203,24 @@ export function useConveyorGame(
               chord &&
               chord.isGateOpen &&
               chord.chordId === ev.chordId &&
-              chord.confidence >= 0.75
+              chord.confidence >= 0.58
             ) {
               matched = true;
             }
           } else if (ev.type === "single-note" && ev.notes && ev.notes.length > 0) {
             const tuner = latestTunerRef.current;
             const targetNote = ev.notes[0];
-            if (
-              tuner &&
-              tuner.isGateOpen &&
-              tuner.frequency > 0 &&
-              (targetNote.pitch.startsWith(tuner.noteName) || Math.abs(tuner.cents) <= 25)
-            ) {
-              matched = true;
+            if (tuner && tuner.isGateOpen && tuner.frequency > 0) {
+              const noteCheck = isSingleNoteMatch(
+                targetNote.pitch,
+                tuner.noteName,
+                tuner.midiNote,
+                tuner.cents,
+                65
+              );
+              if (noteCheck.isMatch) {
+                matched = true;
+              }
             }
           }
 
@@ -232,38 +249,45 @@ export function useConveyorGame(
               };
             });
 
-            // 300ms stabilization buffer before resuming conveyor
+            // 350ms stabilization buffer before resuming conveyor
             waitResumeTimeoutRef.current = setTimeout(() => {
+              isWaitingRef.current = false;
+              activeWaitEventRef.current = null;
               setIsWaiting(false);
               setActiveWaitEvent(null);
               clock.resume();
               waitResumeTimeoutRef.current = null;
-            }, 300);
+            }, 350);
           }
           break; // Stop evaluating further events while waiting
         }
 
         // 2. Normal Conveyor Evaluation
-        // Active Hit Window: [-120ms, +120ms]
-        if (timeDelta >= -0.12 && timeDelta <= 0.12) {
+        // Active Hit Window: [-140ms, +140ms]
+        if (timeDelta >= -0.14 && timeDelta <= 0.14) {
           let isHarmonicMatch = false;
           let confidence = 0;
 
           if (ev.type === "chord" && ev.chordId) {
             const chord = latestChordRef.current;
-            if (chord && chord.isGateOpen && chord.chordId === ev.chordId) {
+            if (chord && chord.isGateOpen && chord.chordId === ev.chordId && chord.confidence >= 0.58) {
               isHarmonicMatch = true;
               confidence = chord.confidence;
             }
           } else if (ev.type === "single-note" && ev.notes && ev.notes.length > 0) {
             const tuner = latestTunerRef.current;
+            const targetNote = ev.notes[0];
             if (tuner && tuner.isGateOpen && tuner.frequency > 0) {
-              if (Math.abs(tuner.cents) <= 25) {
+              const noteCheck = isSingleNoteMatch(
+                targetNote.pitch,
+                tuner.noteName,
+                tuner.midiNote,
+                tuner.cents,
+                55
+              );
+              if (noteCheck.isMatch) {
                 isHarmonicMatch = true;
-                confidence = 0.95;
-              } else if (Math.abs(tuner.cents) <= 45) {
-                isHarmonicMatch = true;
-                confidence = 0.75;
+                confidence = noteCheck.confidence;
               }
             }
           }
@@ -304,15 +328,17 @@ export function useConveyorGame(
         }
 
         // 3. Trigger Wait Mode or Miss
-        // If event passed Hit Zone by more than 100ms without being hit:
-        if (timeDelta > 0.1) {
-          if (enableWaitMode && !isWaiting) {
-            // Trigger Wait Mode!
+        // If event reached Hit Zone and passed by more than 60ms without being hit:
+        if (timeDelta > 0.06) {
+          if (enableWaitModeRef.current && !isWaitingRef.current) {
+            // Trigger Wait Mode! Pause conveyor right on the hit line!
             clock.pause();
+            isWaitingRef.current = true;
+            activeWaitEventRef.current = ev;
             setIsWaiting(true);
             setActiveWaitEvent(ev);
             break;
-          } else if (!enableWaitMode && timeDelta > 0.12) {
+          } else if (!enableWaitModeRef.current && timeDelta > 0.14) {
             // Wait Mode is OFF: record Miss
             processedEventIdsRef.current.add(ev.id);
             setLastFeedback("miss");
@@ -329,6 +355,7 @@ export function useConveyorGame(
               isFeverMode: false,
               missCount: prev.missCount + 1,
             }));
+            break;
           }
         }
       }
@@ -337,6 +364,7 @@ export function useConveyorGame(
     };
 
     animId = requestAnimationFrame(gameLoop);
+
     return () => {
       cancelAnimationFrame(animId);
       if (waitResumeTimeoutRef.current) {
@@ -344,7 +372,7 @@ export function useConveyorGame(
         waitResumeTimeoutRef.current = null;
       }
     };
-  }, [song, clock, isWaiting, activeWaitEvent, enableWaitMode, audioCtx]);
+  }, [clock.isPlaying, song, audioCtx, clock]);
 
   return {
     scoreState,

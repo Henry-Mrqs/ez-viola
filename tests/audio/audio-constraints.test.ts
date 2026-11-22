@@ -7,10 +7,11 @@ describe("Audio Constraints", () => {
     expect(constraints.video).toBe(false);
     expect(constraints.audio).toBeDefined();
 
-    const audio = constraints.audio as MediaTrackConstraints;
-    expect(audio.echoCancellation).toEqual({ ideal: false });
-    expect(audio.noiseSuppression).toEqual({ ideal: false });
-    expect(audio.autoGainControl).toEqual({ ideal: false });
-    expect(audio.channelCount).toEqual({ ideal: 1 });
+    const audio = constraints.audio as Record<string, unknown>;
+    expect(audio.echoCancellation).toBe(false);
+    expect(audio.noiseSuppression).toBe(false);
+    expect(audio.autoGainControl).toBe(false);
+    expect(audio.channelCount).toBe(1);
+    expect(audio.googEchoCancellation).toBe(false);
   });
 });

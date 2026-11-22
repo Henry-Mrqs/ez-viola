@@ -67,10 +67,10 @@ describe("HandsFreeCalibrationEngine (Zero-Click 3-Pluck FSM & Auto-Advance)", (
     engine.onFrame(16.6); // Sustained frame captured -> PLUCK_CONFIRMED -> COOLDOWN_WAIT
     expect(engine.getState().currentPluckCount).toBe(1);
 
-    // Cooldown elapsed (400ms) with silence
+    // Cooldown elapsed (700ms) with silence
     timeBuf.set(silenceTime);
     freqBuf.set(silenceFreq);
-    engine.onFrame(400);
+    engine.onFrame(700);
     expect(engine.getState().state).toBe("AWAITING_PLUCK");
 
     // Simulate Pluck 2
@@ -83,7 +83,7 @@ describe("HandsFreeCalibrationEngine (Zero-Click 3-Pluck FSM & Auto-Advance)", (
 
     timeBuf.set(silenceTime);
     freqBuf.set(silenceFreq);
-    engine.onFrame(400); // -> AWAITING_PLUCK
+    engine.onFrame(700); // -> AWAITING_PLUCK
 
     // Simulate Pluck 3
     timeBuf.set(e2Time.subarray(0, fftSize));
@@ -122,7 +122,7 @@ describe("HandsFreeCalibrationEngine (Zero-Click 3-Pluck FSM & Auto-Advance)", (
 
     timeBuf.set(silenceTime);
     freqBuf.set(silenceFreq);
-    engine.onFrame(400);
+    engine.onFrame(700);
 
     // Pluck 2: 82.41 Hz
     timeBuf.set(normalTime.subarray(0, fftSize));
@@ -133,7 +133,7 @@ describe("HandsFreeCalibrationEngine (Zero-Click 3-Pluck FSM & Auto-Advance)", (
 
     timeBuf.set(silenceTime);
     freqBuf.set(silenceFreq);
-    engine.onFrame(400);
+    engine.onFrame(700);
 
     // Pluck 3: severe outlier (+50 cents sharp ~ 84.82 Hz)
     const outlierFreqVal = 82.41 * Math.pow(2, 50 / 1200);

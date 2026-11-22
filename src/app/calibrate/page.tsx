@@ -5,8 +5,10 @@ import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { NoiseGateModal } from "@/components/tuner/noise-gate-modal";
 import { HandsFreeCalibrationWizard } from "@/components/calibration/hands-free-calibration-wizard";
 import { HandsFreeCalibrationEngine } from "@/audio/hands-free-calibration-engine";
+import { LiveTelemetryPanel } from "@/components/tuner/live-telemetry-panel";
+import { TunerResult } from "@/audio/types";
 import { Button } from "@/components/ui/button";
-import { Volume2, Mic, ArrowLeft, CheckCircle2, Sparkles, Music } from "lucide-react";
+import { Volume2, Mic, ArrowLeft, CheckCircle2, Sparkles, Music, Activity } from "lucide-react";
 import Link from "next/link";
 
 export default function CalibratePage() {
@@ -15,6 +17,14 @@ export default function CalibratePage() {
   const [handsFreeEngine, setHandsFreeEngine] = useState<HandsFreeCalibrationEngine | null>(null);
   const [handsFreeWizardOpen, setHandsFreeWizardOpen] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState(false);
+  const [tunerResult, setTunerResult] = useState<TunerResult | undefined>(undefined);
+
+  useEffect(() => {
+    engine.onTunerUpdate = (res) => {
+      setTunerResult(res);
+    };
+  }, [engine]);
 
   const handleStartNoiseGate = async () => {
     if (!isRunning) {
@@ -119,16 +129,20 @@ export default function CalibratePage() {
                     Calibração Hands-Free do Violão
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    Você não precisa largar o violão para tocar na tela. Toque <strong>3 vezes cada corda</strong>; o EzViola detecta o ataque, descarta ruídos espúrios e avança sozinho em 1200ms.
+                    Você não precisa largar o violão para tocar na tela. Toque <strong>3 vezes cada corda</strong> e depois <strong>cada acorde</strong> com o guia visual; o EzViola detecta o ataque, descarta ruídos espúrios e avança sozinho em 1200ms.
                   </p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 space-y-1">
                   <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Elimina saltos de oitava na 6ª corda (E2)</span>
+                    <span>Elimina saltos de oitava nas 6 cordas (E2..E4)</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-sky-400 font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Calibra os 5 acordes essenciais com guia anatômico</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-purple-400 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Rejeição de outliers estatísticos e ruídos de manuseio</span>
                   </div>
@@ -181,6 +195,46 @@ export default function CalibratePage() {
                 <span>Calibrar Ruído Ambiente</span>
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Live Telemetry Section */}
+        {!handsFreeWizardOpen && (
+          <div className="max-w-4xl mx-auto mt-6 w-full">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60">
+              <div className="flex items-center gap-2.5">
+                <Activity className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">Sessão de Telemetria e Diagnóstico Ao Vivo</h3>
+                  <p className="text-xs text-slate-400">Inspecione em tempo real os Hertz, decibéis e clareza que o microfone está captando</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!isRunning) {
+                    try {
+                      await start();
+                    } catch {}
+                  }
+                  setShowTelemetry(!showTelemetry);
+                }}
+                className="text-xs gap-1.5"
+              >
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{showTelemetry ? "Ocultar Telemetria" : "Abrir Telemetria Ao Vivo"}</span>
+              </Button>
+            </div>
+
+            {showTelemetry && (
+              <div className="mt-3">
+                <LiveTelemetryPanel
+                  engine={engine}
+                  tunerResult={tunerResult}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

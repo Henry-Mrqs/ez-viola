@@ -153,11 +153,6 @@ export class YinDetector {
           cmndf[bestSubTau] <= cmndf[bestSubTau - 1] &&
           cmndf[bestSubTau] <= cmndf[bestSubTau + 1];
 
-        // Pronounced valley criteria:
-        // cmndf[subTau] < threshold * 1.8 (typically < 0.27)
-        // And either:
-        // 1. bestSubVal is significantly deeper than vMatch (vMatch - bestSubVal > 0.015), OR
-        // 2. vMatch was not very strong (vMatch > 0.05) and bestSubVal is below standard threshold
         if (isValley && bestSubVal < this.threshold * 1.8) {
           if (vMatch - bestSubVal > 0.015 || (vMatch > 0.05 && bestSubVal < this.threshold)) {
             tauMatch = bestSubTau;

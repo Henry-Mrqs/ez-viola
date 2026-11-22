@@ -107,6 +107,42 @@ export const DEFAULT_CALIBRATION_TARGETS: readonly CalibrationTarget[] = [
     displayName: "Corda 1 (E4) — Mais fina (Baixo)",
     instructionText: "Toque a corda 1 (mais fina) solta",
   },
+  // Chords Calibration Phase (Hands-Free)
+  {
+    type: "chord",
+    chordId: "Em",
+    name: "Em",
+    displayName: "Acorde Em (Mi menor)",
+    instructionText: "Monte o acorde Em e faça uma batida firme para baixo",
+  },
+  {
+    type: "chord",
+    chordId: "G",
+    name: "G",
+    displayName: "Acorde G (Sol maior)",
+    instructionText: "Monte o acorde G e faça uma batida firme para baixo",
+  },
+  {
+    type: "chord",
+    chordId: "D",
+    name: "D",
+    displayName: "Acorde D (Ré maior)",
+    instructionText: "Monte o acorde D e palhete da corda 4 para baixo",
+  },
+  {
+    type: "chord",
+    chordId: "C",
+    name: "C",
+    displayName: "Acorde C (Dó maior)",
+    instructionText: "Monte o acorde C e palhete da corda 5 para baixo",
+  },
+  {
+    type: "chord",
+    chordId: "Am7",
+    name: "Am7",
+    displayName: "Acorde Am7 (Lá menor com 7ª)",
+    instructionText: "Monte o acorde Am7 e palhete da corda 5 para baixo",
+  },
 ];
 
 export class HandsFreeCalibrationEngine {
@@ -371,40 +407,74 @@ export class HandsFreeCalibrationEngine {
         break;
 
       case "MEASURING_SUSTAIN":
-        // Capture stable harmonic sustain frame
-        if (pitch.frequency > 0 && pitch.clarity >= 0.7) {
-          const centsOffset =
-            1200 * (Math.log(pitch.frequency / targetFreq) / Math.LN2);
+        if (currentTarget.type === "chord" && currentTarget.chordId) {
+          // Chord sustain check (polyphonic RMS energy)
+          if (transient.rms > 0.012) {
+            const chordCapture = GuitarCalibrationService.captureChord(
+              freqBuffer,
+              sampleRate,
+              currentTarget.chordId,
+              currentTarget.displayName
+            );
 
-          // Capture harmonics for string
-          const stringCapture = GuitarCalibrationService.captureString(
-            timeBuffer,
-            freqBuffer,
-            sampleRate,
-            currentTarget.stringNumber ?? 6
-          );
+            this.plucks.push({
+              frequency: 0,
+              clarity: 1.0,
+              rms: transient.rms,
+              centsOffset: 0,
+              harmonics: [],
+              chromagram: chordCapture.chromagram,
+            });
 
-          this.plucks.push({
-            frequency: pitch.frequency,
-            clarity: pitch.clarity,
-            rms: transient.rms,
-            centsOffset,
-            harmonics: stringCapture.harmonics,
-          });
+            const count = this.plucks.length;
+            this.playPluckChime(count);
+            this.feedbackMessage = `Acorde ${currentTarget.displayName} — Toque ${count}/3 confirmado!`;
 
-          const count = this.plucks.length;
-          this.playPluckChime(count);
-          this.feedbackMessage = `Toque ${count}/3 confirmado!`;
-
-          if (this.plucks.length < 3) {
-            this.transitionTo("COOLDOWN_WAIT");
-          } else {
-            this.transitionTo("STEP_COMPLETE");
-            this.evaluatePlucksAndAdvance(currentTarget, timeBuffer, freqBuffer, sampleRate);
+            if (this.plucks.length < 3) {
+              this.transitionTo("COOLDOWN_WAIT");
+            } else {
+              this.transitionTo("STEP_COMPLETE");
+              this.evaluatePlucksAndAdvance(currentTarget, timeBuffer, freqBuffer, sampleRate);
+            }
+          } else if (this.stateTimerMs >= 600) {
+            this.transitionTo("AWAITING_PLUCK");
           }
-        } else if (this.stateTimerMs >= 400) {
-          // Timeout without sustained pitch -> return to awaiting pluck
-          this.transitionTo("AWAITING_PLUCK");
+        } else {
+          // String sustain check
+          if (pitch.frequency > 0 && pitch.clarity >= 0.7) {
+            const centsOffset =
+              1200 * (Math.log(pitch.frequency / targetFreq) / Math.LN2);
+
+            // Capture harmonics for string
+            const stringCapture = GuitarCalibrationService.captureString(
+              timeBuffer,
+              freqBuffer,
+              sampleRate,
+              currentTarget.stringNumber ?? 6
+            );
+
+            this.plucks.push({
+              frequency: pitch.frequency,
+              clarity: pitch.clarity,
+              rms: transient.rms,
+              centsOffset,
+              harmonics: stringCapture.harmonics,
+            });
+
+            const count = this.plucks.length;
+            this.playPluckChime(count);
+            this.feedbackMessage = `Toque ${count}/3 confirmado!`;
+
+            if (this.plucks.length < 3) {
+              this.transitionTo("COOLDOWN_WAIT");
+            } else {
+              this.transitionTo("STEP_COMPLETE");
+              this.evaluatePlucksAndAdvance(currentTarget, timeBuffer, freqBuffer, sampleRate);
+            }
+          } else if (this.stateTimerMs >= 500) {
+            // Timeout without sustained pitch -> return to awaiting pluck
+            this.transitionTo("AWAITING_PLUCK");
+          }
         }
         break;
 
@@ -463,7 +533,38 @@ export class HandsFreeCalibrationEngine {
       return;
     }
 
-    // Compute statistical weights
+    // Handle Chord targets
+    if (target.type === "chord" && target.chordId) {
+      const avgChroma = new Array(12).fill(0);
+      let count = 0;
+      for (const p of this.plucks) {
+        if (p.chromagram) {
+          for (let i = 0; i < 12; i++) {
+            avgChroma[i] += p.chromagram[i];
+          }
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        let normSq = 0;
+        for (let i = 0; i < 12; i++) normSq += avgChroma[i] * avgChroma[i];
+        const norm = Math.sqrt(normSq + 1e-9);
+        for (let i = 0; i < 12; i++) avgChroma[i] /= norm;
+
+        this.calibratedChords[target.chordId] = {
+          chordId: target.chordId,
+          displayName: target.displayName,
+          chromagram: avgChroma,
+          capturedAt: Date.now(),
+        };
+      }
+
+      this.transitionTo("AUTO_ADVANCING");
+      return;
+    }
+
+    // Handle String targets: Compute statistical weights & outlier rejection
     let weightSum = 0;
     const weights: number[] = [];
     for (let i = 0; i < 3; i++) {
@@ -509,7 +610,7 @@ export class HandsFreeCalibrationEngine {
       return;
     }
 
-    // Coherent plucks confirmed! Consolidate string or chord calibration
+    // Coherent plucks confirmed! Consolidate string calibration
     if (target.type === "string" && target.stringNumber) {
       const targetFreq = target.targetFrequency ?? f0Mean;
       const centsOffset =
@@ -527,15 +628,6 @@ export class HandsFreeCalibrationEngine {
       captured.centsOffset = Math.round(centsOffset * 10) / 10;
 
       this.calibratedStrings[target.stringNumber] = captured;
-    } else if (target.type === "chord" && target.chordId) {
-      const chordCaptured = GuitarCalibrationService.captureChord(
-        freqBuffer,
-        sampleRate,
-        target.chordId,
-        target.displayName,
-        0.95
-      );
-      this.calibratedChords[target.chordId] = chordCaptured;
     }
 
     this.transitionTo("AUTO_ADVANCING");

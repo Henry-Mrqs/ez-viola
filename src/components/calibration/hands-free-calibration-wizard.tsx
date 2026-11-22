@@ -5,6 +5,7 @@ import {
   HandsFreeCalibrationEngine,
   HandsFreeCalibrationProgress,
 } from "@/audio/hands-free-calibration-engine";
+import { AnimatedFretboardGuide } from "@/components/guitar/animated-fretboard-guide";
 import { clsx } from "clsx";
 
 export interface HandsFreeCalibrationWizardProps {
@@ -86,21 +87,30 @@ export function HandsFreeCalibrationWizard({
           </div>
         ) : (
           <div className="w-full flex flex-col items-center space-y-5">
-            {/* Current Target String Badge */}
+            {/* Current Target String or Chord Guide */}
             {currentTarget && (
-              <div className="flex flex-col items-center">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-900 border-4 border-sky-500/50 flex flex-col items-center justify-center shadow-xl shadow-sky-950/40 animate-in fade-in">
-                  <span className="text-3xl sm:text-4xl font-black text-sky-400 font-mono">
-                    {currentTarget.name}
-                  </span>
-                  {currentTarget.targetFrequency && (
-                    <span className="text-[11px] font-mono text-slate-400">
-                      {currentTarget.targetFrequency.toFixed(1)} Hz
+              <div className="flex flex-col items-center w-full">
+                {currentTarget.type === "chord" && currentTarget.chordId ? (
+                  <div className="w-full max-w-sm mb-2">
+                    <AnimatedFretboardGuide
+                      chordId={currentTarget.chordId}
+                      className="w-full bg-slate-900/90 shadow-xl"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-900 border-4 border-sky-500/50 flex flex-col items-center justify-center shadow-xl shadow-sky-950/40 animate-in fade-in">
+                    <span className="text-3xl sm:text-4xl font-black text-sky-400 font-mono">
+                      {currentTarget.name}
                     </span>
-                  )}
-                </div>
+                    {currentTarget.targetFrequency && (
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {currentTarget.targetFrequency.toFixed(1)} Hz
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                <h2 className="text-2xl sm:text-3xl font-black mt-4 text-slate-100">
+                <h2 className="text-2xl sm:text-3xl font-black mt-3 text-slate-100 text-center">
                   {currentTarget.displayName}
                 </h2>
               </div>
