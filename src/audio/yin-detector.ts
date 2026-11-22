@@ -120,17 +120,64 @@ export class YinDetector {
       return this.result;
     }
 
+    // Step 3.5: Sub-Harmonic / Octave Error Correction
+    // On acoustic guitars, low strings (E2 82.41Hz, A2 110Hz, D3 146.83Hz) often exhibit
+    // a 2nd harmonic (and sometimes 3rd) stronger than the fundamental.
+    // Standard YIN searches from tauMin upward and can latch onto tau/2 (octave doubling).
+    // When a candidate tau is found, we check if integer multiples (2*tau, 3*tau) have
+    // a pronounced valley in CMNDF within the guitar fundamental range (65Hz - 400Hz).
+    const vMatch = cmndf[tauMatch];
+    for (const k of [2, 3]) {
+      const subTauEst = Math.round(tauMatch * k);
+      const subFreq = this.sampleRate / subTauEst;
+
+      if (subFreq >= 65 && subFreq <= 400 && subTauEst < tauMax - 2) {
+        // Search local neighborhood (+- 4% or at least +-3 samples) for the true valley minimum
+        const searchRange = Math.max(3, Math.round(0.04 * subTauEst));
+        const start = Math.max(tauMin, subTauEst - searchRange);
+        const end = Math.min(tauMax - 2, subTauEst + searchRange);
+
+        let bestSubTau = subTauEst;
+        let bestSubVal = cmndf[subTauEst];
+
+        for (let t = start; t <= end; t++) {
+          if (cmndf[t] < bestSubVal) {
+            bestSubVal = cmndf[t];
+            bestSubTau = t;
+          }
+        }
+
+        const isValley =
+          bestSubTau > 0 &&
+          bestSubTau < tauMax - 1 &&
+          cmndf[bestSubTau] <= cmndf[bestSubTau - 1] &&
+          cmndf[bestSubTau] <= cmndf[bestSubTau + 1];
+
+        // Pronounced valley criteria:
+        // cmndf[subTau] < threshold * 1.8 (typically < 0.27)
+        // And either:
+        // 1. bestSubVal is significantly deeper than vMatch (vMatch - bestSubVal > 0.015), OR
+        // 2. vMatch was not very strong (vMatch > 0.05) and bestSubVal is below standard threshold
+        if (isValley && bestSubVal < this.threshold * 1.8) {
+          if (vMatch - bestSubVal > 0.015 || (vMatch > 0.05 && bestSubVal < this.threshold)) {
+            tauMatch = bestSubTau;
+            break;
+          }
+        }
+      }
+    }
+
     // Step 4: Sub-sample Parabolic Interpolation
     let tauRefined = tauMatch;
     if (tauMatch > 0 && tauMatch < tauMax - 1) {
       const y1 = cmndf[tauMatch - 1];
       const y2 = cmndf[tauMatch];
       const y3 = cmndf[tauMatch + 1];
-      const denominator = 2 * (2 * y2 - y1 - y3);
+      const curvature = 2 * y2 - y1 - y3;
 
-      if (Math.abs(denominator) > 1e-9) {
-        const delta = (y3 - y1) / denominator;
-        if (delta >= -1 && delta <= 1) {
+      if (curvature < -1e-9) {
+        const delta = (y3 - y1) / (2 * curvature);
+        if (delta >= -0.5 && delta <= 0.5) {
           tauRefined = tauMatch + delta;
         }
       }

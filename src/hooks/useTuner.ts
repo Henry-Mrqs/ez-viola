@@ -22,6 +22,9 @@ const INITIAL_TUNER_RESULT: TunerResult = {
 export function useTuner(engine: AudioEngine) {
   const [tunerResult, setTunerResult] = useState<TunerResult>(INITIAL_TUNER_RESULT);
   const [targetString, setTargetStringState] = useState<number | null>(null);
+  const [guitarMode, setGuitarModeState] = useState<boolean>(() =>
+    engine.getTunerEngine().isGuitarMode()
+  );
 
   useEffect(() => {
     engine.onTunerUpdate = (res) => {
@@ -42,9 +45,19 @@ export function useTuner(engine: AudioEngine) {
     [engine]
   );
 
+  const setGuitarMode = useCallback(
+    (enabled: boolean) => {
+      setGuitarModeState(enabled);
+      engine.getTunerEngine().setGuitarMode(enabled);
+    },
+    [engine]
+  );
+
   return {
     tunerResult,
     targetString,
     setTargetString,
+    guitarMode,
+    setGuitarMode,
   };
 }

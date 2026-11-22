@@ -15,6 +15,9 @@ export class AudioEngine {
   private highPassFilter: BiquadFilterNode | null = null;
   private tunerAnalyser: AnalyserNode | null = null;
   private chordAnalyser: AnalyserNode | null = null;
+  private loopbackGain: GainNode | null = null;
+  private loopbackEnabled: boolean = false;
+  private loopbackVolume: number = 1.0;
 
   private tunerEngine: TunerEngine;
   private chordRecognizer: ChordRecognizer;
@@ -35,7 +38,7 @@ export class AudioEngine {
     this.timeBuffer = new Float32Array(new ArrayBuffer(2048 * 4));
     this.freqBuffer = new Float32Array(new ArrayBuffer(2048 * 4)); // 4096 fftSize / 2
 
-    this.tunerEngine = new TunerEngine(44100, 2048, 0.35);
+    this.tunerEngine = new TunerEngine(44100, 2048, 0.15);
     this.chordRecognizer = new ChordRecognizer(44100, 4096, 0.72, 8);
   }
 
@@ -53,6 +56,37 @@ export class AudioEngine {
 
   public getChordRecognizer(): ChordRecognizer {
     return this.chordRecognizer;
+  }
+
+  /**
+   * Enables or disables microphone monitor loopback to destination.
+   * Starts disabled (gain = 0) by default to prevent acoustic feedback / Larsen effect.
+   */
+  public setLoopback(enabled: boolean, volume: number = 1.0): void {
+    this.loopbackEnabled = enabled;
+    this.loopbackVolume = Math.max(0, Math.min(2.0, volume));
+    if (this.loopbackGain && this.audioCtx) {
+      const gainVal = enabled ? this.loopbackVolume : 0;
+      this.loopbackGain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime);
+    }
+  }
+
+  public isLoopbackEnabled(): boolean {
+    return this.loopbackEnabled;
+  }
+
+  /**
+   * Fills outputArray with raw time-domain waveform data (oscilloscope / VU meter).
+   * Zero-GC: operates on caller-provided Float32Array.
+   */
+  public getWaveformData(outputArray: Float32Array): void {
+    if (this.tunerAnalyser) {
+      this.tunerAnalyser.getFloatTimeDomainData(
+        outputArray as unknown as Float32Array<ArrayBuffer>
+      );
+    } else {
+      outputArray.fill(0);
+    }
   }
 
   private setStatus(newStatus: AudioEngineStatus): void {
@@ -105,6 +139,16 @@ export class AudioEngine {
       // 3. Build DSP graph
       // Source -> HighPassFilter (65 Hz, Q=0.707) -> tunerAnalyser & chordAnalyser
       this.sourceNode = ctx.createMediaStreamSource(stream);
+
+      // Loopback monitor node (microphone return, default gain 0)
+      const loopback = ctx.createGain();
+      loopback.gain.setValueAtTime(
+        this.loopbackEnabled ? this.loopbackVolume : 0,
+        ctx.currentTime
+      );
+      this.loopbackGain = loopback;
+      this.sourceNode.connect(loopback);
+      loopback.connect(ctx.destination);
 
       const hpf = ctx.createBiquadFilter();
       hpf.type = "highpass";
@@ -192,6 +236,13 @@ export class AudioEngine {
         this.sourceNode.disconnect();
       } catch {}
       this.sourceNode = null;
+    }
+
+    if (this.loopbackGain) {
+      try {
+        this.loopbackGain.disconnect();
+      } catch {}
+      this.loopbackGain = null;
     }
 
     if (this.highPassFilter) {

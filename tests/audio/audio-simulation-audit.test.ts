@@ -3,7 +3,6 @@ import { YinDetector } from "@/audio/yin-detector";
 import { TunerEngine } from "@/audio/tuner-engine";
 import { ChordRecognizer } from "@/audio/chord-recognizer";
 import { NoiseGate } from "@/audio/noise-gate";
-import { GUITAR_STRINGS } from "@/audio/types";
 import {
   generateSineWave,
   generateFftFromFrequencies,

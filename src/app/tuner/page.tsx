@@ -7,29 +7,92 @@ import { TunerGauge } from "@/components/canvas/tuner-gauge";
 import { FrequencyDisplay } from "@/components/tuner/frequency-display";
 import { StringSelector } from "@/components/tuner/string-selector";
 import { NoiseGateModal } from "@/components/tuner/noise-gate-modal";
+import { MicMonitor } from "@/components/tuner/mic-monitor";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Sliders, Volume2, Sparkles, AlertCircle } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Sliders,
+  Volume2,
+  Sparkles,
+  AlertCircle,
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  Disc,
+} from "lucide-react";
+import { clsx } from "clsx";
 
 export default function TunerPage() {
-  const { engine, isRunning, error, start, stop } = useAudioEngine();
-  const { tunerResult, targetString, setTargetString } = useTuner(engine);
+  const {
+    engine,
+    isRunning,
+    error,
+    start,
+    stop,
+    isLoopback,
+    loopbackVolume,
+    toggleLoopback,
+    setLoopbackVolume,
+  } = useAudioEngine();
+
+  const {
+    tunerResult,
+    targetString,
+    setTargetString,
+    guitarMode,
+    setGuitarMode,
+  } = useTuner(engine);
+
   const [calibrateModalOpen, setCalibrateModalOpen] = useState(false);
+  const [showMonitor, setShowMonitor] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
-      {/* Header bar */}
+      {/* Header Bar */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
             <Sliders className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white">Afinador Cromático</h1>
-            <p className="text-xs text-slate-400">Precisão profissional de ±5 cents</p>
+            <h1 className="text-xl sm:text-2xl font-black text-white">Afinador</h1>
+            <p className="text-xs text-slate-400">
+              {guitarMode
+                ? "Modo Violão Inteligente • ±5 cents"
+                : "Modo Cromático Livre • ±5 cents"}
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Test / Monitor Microphone Panel Toggle */}
+          <Button
+            variant={showMonitor ? "secondary" : isLoopback ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowMonitor(!showMonitor)}
+            className={clsx(
+              "text-xs gap-1.5 transition-all",
+              isLoopback
+                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30 ring-2 ring-emerald-500/30 animate-pulse"
+                : showMonitor
+                ? "bg-slate-700 text-white border-slate-600"
+                : "text-slate-300 hover:text-white"
+            )}
+            title="Testar e Monitorar Microfone (Osciloscópio, VU meter e Retorno)"
+          >
+            <Activity className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">Testar / Monitorar Mic</span>
+            {isLoopback && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-0.5" />
+            )}
+            {showMonitor ? (
+              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            )}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -64,6 +127,58 @@ export default function TunerPage() {
         </div>
       </div>
 
+      {/* Expandable Mic Monitor & Test Panel */}
+      {showMonitor && (
+        <div className="w-full my-4 animate-in fade-in slide-in-from-top-3 duration-300">
+          <MicMonitor
+            engine={engine}
+            isRunning={isRunning}
+            isLoopback={isLoopback}
+            loopbackVolume={loopbackVolume}
+            onToggleLoopback={toggleLoopback}
+            onVolumeChange={setLoopbackVolume}
+            onStartMic={start}
+          />
+        </div>
+      )}
+
+      {/* Mode Selector Toolbar */}
+      <div className="flex flex-col items-center gap-1.5 w-full max-w-lg mx-auto pt-3">
+        <div className="flex items-center p-1 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-inner w-full">
+          <button
+            type="button"
+            onClick={() => setGuitarMode(true)}
+            className={clsx(
+              "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              guitarMode
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/40"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <Sparkles className="w-4 h-4 text-emerald-300" />
+            <span>Modo Violão Inteligente</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setGuitarMode(false)}
+            className={clsx(
+              "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              !guitarMode
+                ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-950/40"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <Disc className="w-4 h-4 text-sky-300" />
+            <span>Modo Cromático Livre</span>
+          </button>
+        </div>
+        <p className="text-[11px] text-slate-400 text-center">
+          {guitarMode
+            ? "Filtro harmônico anti-pulos de oitava, atração para as 6 cordas E2..E4 e estabilizador de palheta."
+            : "Afinação cromática livre sem restrições para qualquer nota ou instrumento."}
+        </p>
+      </div>
+
       {/* Main Tuner Area */}
       <div className="flex-1 flex flex-col items-center justify-center py-4 my-auto space-y-4">
         {error && (
@@ -93,12 +208,17 @@ export default function TunerPage() {
 
         {isRunning && (
           <div className="w-full flex flex-col items-center space-y-4 animate-in fade-in duration-300">
-            {/* Visual Arc Needle Gauge */}
+            {/* Visual Arc Needle Gauge with String Lock Badge */}
             <TunerGauge
               cents={tunerResult.cents}
               inTune={tunerResult.inTune}
               isGateOpen={tunerResult.isGateOpen}
               hasPitch={tunerResult.frequency > 0}
+              stringIndex={tunerResult.stringIndex}
+              noteName={tunerResult.noteName}
+              octave={tunerResult.octave}
+              frequency={tunerResult.smoothedFrequency}
+              targetFrequency={tunerResult.targetFrequency}
             />
 
             {/* Note & Numerical Values */}

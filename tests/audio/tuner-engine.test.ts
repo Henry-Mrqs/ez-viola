@@ -95,4 +95,90 @@ describe("TunerEngine (EWMA Smoothing, Cents, and String Identification)", () =>
     expect(res.octave).toBe(2);
     expect(res.cents).toBeLessThan(-5); // flat
   });
+
+  it("eliminates single-frame pick noise spikes using 5-sample median filter", () => {
+    // Tuner with adaptive smoothing and median filter enabled
+    const tuner = new TunerEngine(sampleRate, 2048, 0.15);
+
+    // Frame 1, 2, 3: Steady A4 (440 Hz)
+    const bufA4 = generateSineWave(440.0, sampleRate, 0.1, 0.8);
+    tuner.process(bufA4);
+    tuner.process(bufA4);
+    const res3 = tuner.process(bufA4);
+    expect(res3.noteName).toBe("A");
+    expect(res3.octave).toBe(4);
+
+    // Frame 4: Transient single-frame noise spike (e.g. pick scratch at 700 Hz, same gate)
+    // Note: in YIN detection, if a spike occurs for 1 frame:
+    const bufSpike = generateSineWave(448.0, sampleRate, 0.1, 0.8); // +31 cents spike
+    const resSpike = tuner.process(bufSpike);
+
+    // Median filter rejects the spike because median of [440, 440, 440, 448] is 440!
+    expect(resSpike.smoothedFrequency).toBeCloseTo(440.0, 0.5);
+  });
+
+  it("folds harmonics (2x, 3x) back to fundamental when target string is locked", () => {
+    const tuner = new TunerEngine(sampleRate, 2048, 1.0);
+    // Lock String 6 (E2 = 82.41 Hz)
+    tuner.setTargetString(6);
+
+    // Input is 2nd harmonic (164.82 Hz)
+    const buf2nd = generateSineWave(164.82, sampleRate, 0.1, 0.8);
+    const res2nd = tuner.process(buf2nd);
+    expect(res2nd.targetFrequency).toBeCloseTo(82.41, 1);
+    expect(res2nd.noteName).toBe("E");
+    expect(res2nd.octave).toBe(2);
+    expect(res2nd.stringIndex).toBe(0);
+    expect(res2nd.inTune).toBe(true);
+
+    // Input is 3rd harmonic (247.23 Hz)
+    const buf3rd = generateSineWave(247.23, sampleRate, 0.1, 0.8);
+    const res3rd = tuner.process(buf3rd);
+    expect(res3rd.targetFrequency).toBeCloseTo(82.41, 1);
+    expect(res3rd.noteName).toBe("E");
+    expect(res3rd.octave).toBe(2);
+    expect(res3rd.stringIndex).toBe(0);
+    expect(res3rd.inTune).toBe(true);
+  });
+
+  it("folds open string octave doubling in guitarMode without string lock", () => {
+    const tuner = new TunerEngine(sampleRate, 2048, 1.0);
+    expect(tuner.isGuitarMode()).toBe(true);
+
+    // 164.82 Hz (E3) is not an open string, folds to E2
+    const bufE3 = generateSineWave(164.82, sampleRate, 0.1, 0.8);
+    const resE = tuner.process(bufE3);
+    expect(resE.noteName).toBe("E");
+    expect(resE.octave).toBe(2);
+    expect(resE.stringIndex).toBe(0); // E2
+
+    // 220.00 Hz (A3) is not an open string, folds to A2
+    const bufA3 = generateSineWave(220.00, sampleRate, 0.1, 0.8);
+    const resA = tuner.process(bufA3);
+    expect(resA.noteName).toBe("A");
+    expect(resA.octave).toBe(2);
+    expect(resA.stringIndex).toBe(1); // A2
+  });
+
+  it("applies adaptive EWMA with high stability on steady note and fast transition on note change", () => {
+    const tuner = new TunerEngine(sampleRate, 2048, 0.15);
+    expect(tuner.isAdaptiveSmoothing()).toBe(true);
+
+    // Play E2 (82.41 Hz) over several frames until stable
+    const bufE2 = generateSineWave(82.41, sampleRate, 0.1, 0.8);
+    for (let i = 0; i < 8; i++) {
+      tuner.process(bufE2, 16.6);
+    }
+    const resE2 = tuner.process(bufE2, 16.6);
+    expect(resE2.noteName).toBe("E");
+    expect(resE2.smoothedFrequency).toBeCloseTo(82.41, 0.5);
+
+    // Switch to A2 (110.00 Hz) - immediate responsiveness via note change alpha = 0.80
+    const bufA2 = generateSineWave(110.00, sampleRate, 0.1, 0.8);
+    const resA2 = tuner.process(bufA2, 16.6);
+    expect(resA2.noteName).toBe("A");
+    expect(resA2.octave).toBe(2);
+    // With alpha=0.80, jumps immediately from 82.41 to > 100 Hz in one frame
+    expect(resA2.smoothedFrequency).toBeGreaterThan(100.0);
+  });
 });

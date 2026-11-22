@@ -78,4 +78,36 @@ describe("YinDetector (Sub-sample Monophonic Pitch Detection)", () => {
     expect(result.frequency).toBe(-1);
     expect(result.clarity).toBeLessThan(0.6);
   });
+
+  it("TC-05: corrects octave doubling on low E2 string when 2nd harmonic is 5x stronger than fundamental", () => {
+    const sampleRate = 44100;
+    const yin = new YinDetector(sampleRate, 2048, 0.15);
+
+    // E2 (82.41 Hz) with weak fundamental (0.2) and dominant 2nd harmonic (1.0 = 164.82 Hz)
+    const harmonics = [0.2, 1.0, 0.1, 0.4];
+    const buffer = generateHarmonicGuitarString(82.41, harmonics, sampleRate, 0.1);
+
+    const result = yin.detect(buffer);
+
+    // Sub-harmonic verification MUST identify 82.41 Hz, preventing octave doubling to 164.8 Hz
+    expect(result.frequency).toBeGreaterThanOrEqual(81.5);
+    expect(result.frequency).toBeLessThanOrEqual(83.5);
+    expect(result.clarity).toBeGreaterThan(0.85);
+  });
+
+  it("TC-06: corrects octave doubling on A2 string when 2nd harmonic is 4x stronger than fundamental", () => {
+    const sampleRate = 48000; // test at 48kHz mobile/AirPods rate
+    const yin = new YinDetector(sampleRate, 2048, 0.15);
+
+    // A2 (110.00 Hz) with weak fundamental (0.25) and dominant 2nd harmonic (1.0 = 220.00 Hz)
+    const harmonics = [0.25, 1.0, 0.15, 0.3];
+    const buffer = generateHarmonicGuitarString(110.0, harmonics, sampleRate, 0.1);
+
+    const result = yin.detect(buffer);
+
+    // Sub-harmonic verification MUST identify 110.00 Hz, preventing octave doubling to 220.0 Hz
+    expect(result.frequency).toBeGreaterThanOrEqual(109.0);
+    expect(result.frequency).toBeLessThanOrEqual(111.0);
+    expect(result.clarity).toBeGreaterThan(0.85);
+  });
 });

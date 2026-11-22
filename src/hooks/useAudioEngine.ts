@@ -8,6 +8,8 @@ export function useAudioEngine(autoCleanup: boolean = true) {
   const engineRef = useRef<AudioEngine | null>(null);
   const [status, setStatus] = useState<AudioEngineStatus>("uninitialized");
   const [error, setError] = useState<string | null>(null);
+  const [isLoopback, setIsLoopback] = useState<boolean>(false);
+  const [loopbackVolume, setLoopbackVolumeState] = useState<number>(1.0);
 
   if (!engineRef.current) {
     engineRef.current = new AudioEngine();
@@ -57,10 +59,38 @@ export function useAudioEngine(autoCleanup: boolean = true) {
   const stop = useCallback(async () => {
     try {
       await engine.stop();
+      setIsLoopback(false);
     } catch (err) {
       console.warn("AudioEngine stop error:", err);
     }
   }, [engine]);
+
+  const setLoopbackVolume = useCallback(
+    (vol: number) => {
+      const clamped = Math.max(0, Math.min(1.0, vol));
+      setLoopbackVolumeState(clamped);
+      engine.setLoopback(engine.isLoopbackEnabled(), clamped);
+    },
+    [engine]
+  );
+
+  const toggleLoopback = useCallback(() => {
+    const next = !engine.isLoopbackEnabled();
+    engine.setLoopback(next, loopbackVolume);
+    setIsLoopback(next);
+  }, [engine, loopbackVolume]);
+
+  const setLoopback = useCallback(
+    (enabled: boolean, volume?: number) => {
+      const vol = volume !== undefined ? Math.max(0, Math.min(1.0, volume)) : loopbackVolume;
+      if (volume !== undefined) {
+        setLoopbackVolumeState(vol);
+      }
+      engine.setLoopback(enabled, vol);
+      setIsLoopback(enabled);
+    },
+    [engine, loopbackVolume]
+  );
 
   return {
     engine,
@@ -69,5 +99,10 @@ export function useAudioEngine(autoCleanup: boolean = true) {
     start,
     stop,
     isRunning: status === "running",
+    isLoopback,
+    loopbackVolume,
+    toggleLoopback,
+    setLoopback,
+    setLoopbackVolume,
   };
 }
