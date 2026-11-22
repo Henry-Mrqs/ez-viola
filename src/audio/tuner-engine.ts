@@ -265,10 +265,10 @@ export class TunerEngine {
     }
 
     // 3. Known octave doubling frequencies of open strings that do not collide with open string fundamentals
-    // E3 (~164.82 Hz) -> 2x of E2 (82.41 Hz)
-    if (centsDiff(freq, 164.82) <= 55) return freq / 2;
+    // E3 (~164.82 Hz) -> 2x of E2 (82.41 Hz). Any guitar frequency in [148, 185] Hz is E2's 2nd harmonic
+    if ((freq >= 148 && freq <= 185) || centsDiff(freq, 164.82) <= 75) return freq / 2;
     // A3 (~220.00 Hz) -> 2x of A2 (110.00 Hz)
-    if (centsDiff(freq, 220.00) <= 55) return freq / 2;
+    if ((freq >= 205 && freq <= 235) || centsDiff(freq, 220.00) <= 65) return freq / 2;
     // D4 (~293.66 Hz) -> 2x of D3 (146.83 Hz)
     if (centsDiff(freq, 293.66) <= 55) return freq / 2;
 
@@ -345,7 +345,11 @@ export class TunerEngine {
 
     const pitchResult = this.yinDetector.detect(timeBuffer);
 
-    if (pitchResult.frequency <= 0 || pitchResult.clarity < 0.6) {
+    // Dynamic clarity threshold: low strings (E2=82.4Hz, A2=110Hz) suffer from MEMS microphone
+    // high-pass roll-off, so allow clarity >= 0.45 below 130 Hz.
+    const minClarity = (pitchResult.frequency > 0 && pitchResult.frequency < 130) ? 0.45 : 0.55;
+
+    if (pitchResult.frequency <= 0 || pitchResult.clarity < minClarity) {
       this.result.frequency = -1;
       this.result.smoothedFrequency = -1;
       this.result.targetFrequency = this.targetStringLock?.targetFrequency ?? 0;

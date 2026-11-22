@@ -86,6 +86,7 @@ export default function PracticeSongPage() {
     const chordKeys = Object.keys(song.chordsUsed);
     if (chordKeys.length > 0) {
       engine.getChordRecognizer().setActiveChords(chordKeys);
+      engine.setAdaptiveFilterForChords();
     }
   }, [engine, song]);
 

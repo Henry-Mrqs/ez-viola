@@ -51,7 +51,7 @@ export function isSingleNoteMatch(
   detectedNoteName: string,
   detectedMidiNote: number,
   detectedCents: number,
-  toleranceCents: number = 55
+  toleranceCents: number = 80
 ): { isMatch: boolean; confidence: number } {
   if (!detectedNoteName || detectedNoteName === "-" || detectedMidiNote <= 0) {
     return { isMatch: false, confidence: 0 };

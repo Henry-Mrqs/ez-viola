@@ -339,25 +339,39 @@ export function AnimatedFretboardGuide({
             if (isNut) {
               return (
                 <g key="nut-pestana">
-                  {/* Bone/Ivory Pestana (Nut) */}
+                  {/* Bone/Ivory Pestana (Nut) block flush with Fret 1 */}
                   <rect
-                    x={nutX - 5}
-                    y="16"
-                    width="10"
-                    height="188"
-                    rx="3"
-                    fill="#F8FAFC"
-                    stroke="#94A3B8"
-                    strokeWidth="1.5"
+                    x={nutX - 6}
+                    y="18"
+                    width="8"
+                    height="184"
+                    rx="2"
+                    fill="#FEF3C7"
+                    stroke="#D97706"
+                    strokeWidth="1"
                   />
+                  {/* 6 String Slots (notches) on the bone nut */}
+                  {stringYs.map((sy, sIdx) => (
+                    <rect
+                      key={`nut-slot-${sIdx}`}
+                      x={nutX - 6}
+                      y={sy - 1.5}
+                      width="8"
+                      height="3"
+                      fill="#1E293B"
+                      fillOpacity="0.5"
+                      rx="0.5"
+                    />
+                  ))}
+                  {/* Pestana Label under the nut aligned with Casa 1, Casa 2 */}
                   <text
-                    x={nutX}
-                    y="11"
+                    x={nutX - 2}
+                    y="218"
                     textAnchor="middle"
-                    fontSize="9"
-                    fontWeight="black"
-                    fill="#F8FAFC"
-                    className="font-sans select-none tracking-widest uppercase"
+                    fontSize="10"
+                    fontWeight="bold"
+                    fill="#F59E0B"
+                    className="font-mono select-none"
                   >
                     Pestana
                   </text>

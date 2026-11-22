@@ -240,9 +240,9 @@ export class AudioEngine {
       this.chordAnalyser = chordAna;
 
       this.sourceNode.connect(hpf);
+      hpf.connect(chordAna); // Chord analyser gets full wideband acoustic spectrum
       hpf.connect(adaptive);
-      adaptive.connect(tunerAna);
-      adaptive.connect(chordAna);
+      adaptive.connect(tunerAna); // Tuner analyser gets adaptive low-pass filter to eliminate octave error
 
       this.setStatus("running");
       this.lastFrameTimestamp = performance.now();
