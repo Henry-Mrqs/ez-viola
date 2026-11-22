@@ -26,7 +26,9 @@
 | **HTTPS Ativo** | APROVADO | Obrigatório pelo padrão W3C para acesso a `navigator.mediaDevices.getUserMedia`. HSTS ativado (`max-age=63072000`). |
 | **Permissions-Policy** | APROVADO | Header `Permissions-Policy: microphone=*` configurado em `vercel.json` e validado via `curl -I`. |
 | **Headers de Segurança** | APROVADO | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`. |
-| **Suíte de Testes Automatizados** | APROVADO | 50 testes passando em 12 arquivos com 100% de sucesso (Vitest). |
+| **Suíte de Testes Automatizados** | APROVADO | 67 testes passando em 15 arquivos com 100% de sucesso (Vitest). |
+| **Estabilizador Inteligente para Violão** | APROVADO | YIN com correção de sub-harmônicos (E2/A2), filtro de mediana de 5 amostras, damping de palhetada e dobramento harmônico. |
+| **Monitor de Retorno do Microfone** | APROVADO | Loopback de microfone direto com slider de volume, alerta de fones, osciloscópio em tempo real (Canvas 60 FPS) e VU Meter (dBFS). |
 | **Build de Produção** | APROVADO | Next.js 14.2 compilado estritamente com zero erros de tipagem TypeScript. |
 | **Zero Backend / Custo Zero** | APROVADO | 100% client-side rodando direto no navegador (Web Audio API + Canvas 2D nativo). |
 | **Responsividade Mobile-First** | APROVADO | Otimizado para smartphones (360px–428px) em estantes de violão e telas desktop amplas. |
